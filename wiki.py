@@ -2,7 +2,7 @@ import urllib.request
 import urllib.parse
 from bs4 import BeautifulSoup as bs
 import json
-from db import DBMan
+from db import DBMan, declarative_base, Column, Integer, Text
 import re 
 
 # import nltk
@@ -10,8 +10,7 @@ import re
 # import networkx, matplotlib, plotly
 
 
-manager = DBMan()
-session = manager.session
+
 
 
 def get_wiki_page(wiki_url):
@@ -28,30 +27,59 @@ class WikiCrawler:
     link_regex = re.compile("^https*://.*")
     header_regex = re.compile('^h[1-6]$')
 
-    def __init__(self, url):
-        self.crawl(url)
+    def __enter__(self):
+        Base = declarative_base()
+
+        class DBEntry(Base):
+            __tablename__ = 'wikipages'
+            id = Column(Integer, primary_key=True)
+            url = Column(Text, nullable=False)
+            page = Column(Text, nullable=False)
+            title = Column(Text, nullable=False)
+            paragraphs = Column(Text, nullable=False)
+            sub_headings = Column(Text, nullable=False)
+            internal_links = Column(Text, nullable=False)
+            wiki_links = Column(Text, nullable=False)
+            referencess = Column(Text, nullable=False)
+            media = Column(Text, nullable=False)
+
+        self.manager = DBMan('wikipedia.db', Base, DBEntry)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.manager.close()
+        self.manager = None
 
     def crawl(self, url):
-        self.url = url
-        self.page = self._visit(self.url)
+        wiki = {}
+        wiki['url'] = url
+        wiki['page'] = self._visit(wiki['url'])
 
-        self.title = self.page.find(id='firstHeading').get_text()
-        self.sub_headings = {}
-        self.paragraphs = self._paragraphs()
-        self.internal_links = self._page_links()
-        self.wiki_links = self._wiki_links()
-        self.references = self._reference_links()
-        self.media = self._get_media()
+        wiki['title'] = wiki['page'].find(id='firstHeading').get_text()
+        wiki['paragraphs'] = self._paragraphs(wiki['page'])
+        wiki['sub_headings'], wiki['internal_links'] = self._page_links(wiki['url'], wiki['page'])
+        wiki['wiki_links'] = self._wiki_links(wiki['page'])
+        wiki['references'] = self._reference_links(wiki['page'])
+        wiki['media'] = self._get_media(wiki['page'])
 
-    def _visit(self):
-        page = get_wiki_page(self.url)
+        if self.manager is not None:
+            entry = self.manager.Node(url = wiki['url'], page = str(wiki['page'].contents), title = wiki['title'], paragraphs = wiki['paragraphs'], 
+                                            sub_headings = wiki['sub_headings'], internal_links = wiki['internal_links'], 
+                                            wiki_links = wiki['wiki_links'], referencess = wiki['references'], media = wiki['media'])
+
+            self.manager.session.add(entry)
+
+        return wiki
+
+    def _visit(self, url):
+        page = get_wiki_page(url)
         page_struct = bs(page, 'html.parser')
 
         return page_struct
 
-    def _paragraphs(self):
+    def _paragraphs(self, page):
         paragraphs = []
-        body_start = self.page.find(id='mw-content-text').\
+        body_start = page.find(id='mw-content-text').\
             find(attrs={'class': 'mw-parser-output'})
 
         for pa in body_start.find_all('p'):     
@@ -61,44 +89,39 @@ class WikiCrawler:
         
         return paragraphs
 
-    def _page_links(self):
+    def _page_links(self, url, page):
+        sub_headings = {}
         links = []
 
-        for li in self.page.find(id='toc').ul.find_all('li'):
+        for li in page.find(id='toc').ul.find_all('li'):
             index, name = li.a.get_text().split(' ', 1)
             index = str(index)
-            self.sub_headings[index] = (name, li.a.get('href'))
-            links.append(self.url + self.sub_headings[index][1])
+            sub_headings[index] = (name, li.a.get('href'))
+            links.append(url + sub_headings[index][1])
 
-        return links
+        return sub_headings, links
 
-    def _wiki_links(self):
+    def _wiki_links(self, page):
         extern = []
 
-        for wikilink in self.page.find_all('a', attrs={'href': self.wiki_regex}):
+        for wikilink in page.find_all('a', attrs={'href': self.wiki_regex}):
             extern.append(wikilink.get('href'))
 
         return extern
 
-    def _reference_links(self):
+    def _reference_links(self, page):
         links = []
 
-        for a in self.page.find_all('a', attrs={'class': 'external text', 'href': self.link_regex}):
+        for a in page.find_all('a', attrs={'class': 'external text', 'href': self.link_regex}):
             links.append((a['href'], a.get_text())) 
 
         return links
 
-    def _get_media(self):
+    def _get_media(self, page):
         pass
 
     def _follow_page_ref(self):
         pass
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __str__(self):
-        return str((self.title, self.sub_headings, self.paragraphs, self.internal_links, self.wiki_links, self.references, self.media))
 
 def interactive_loop():
     url = None
@@ -111,7 +134,7 @@ def interactive_loop():
 
 if __name__ == '__main__':
     pages = ['http://en.wikipedia.org/wiki/Philosophy', 'https://en.wikipedia.org/wiki/Existence']
-    parser = WikiCrawler(pages[1])
-    # # print(parser.body)
-    # print(parser.sub_headings)
-    print(parser)
+    
+    with WikiCrawler() as wc:
+        wc.crawl(pages[1])
+   
