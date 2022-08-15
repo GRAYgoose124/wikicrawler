@@ -21,10 +21,14 @@ def _regexp(expr, item):
     return reg.search(item) is not None  #
 
 
+Base = declarative_base()
+
+
 class DBMan():
-    def __init__(self, db_name, base, node):
+    def __init__(self, db_name, node):
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        db_path = os.path.join(dir_path, db_name)
+        # TODO: Need to mkdir databases.
+        db_path = os.path.join(dir_path, 'databases', db_name)
 
         if os.name == 'nt':
             db_path = f'sqlite:///{db_path}'
@@ -33,7 +37,7 @@ class DBMan():
 
         self.db_path = db_path
 
-        self.Base = base
+        self.Base = Base
         self.Node = node
       
         self.session = self.create_session()
@@ -47,6 +51,7 @@ class DBMan():
     
     def create_session(self):
         engine = create_engine(self.db_path)
+
         self.Node.metadata.create_all(engine)
         self.Base.metadata.bind = engine
 

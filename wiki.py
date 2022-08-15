@@ -2,38 +2,36 @@ import urllib.request
 import urllib.parse
 from bs4 import BeautifulSoup as bs
 import json
-from db import DBMan, declarative_base, Column, Integer, Text, JSON
+from db import DBMan, Column, Text, JSON, Base
 import re 
 
 # import nltk
 # import tensorflow, numpy, etc
 # import networkx, matplotlib, plotly
 
+class DBEntry(Base):
+    __tablename__ = 'wikipages'
+    # id = Column(Integer)
+    url = Column(Text, nullable=False, primary_key=True)
+    title = Column(Text, nullable=False)
+    paragraphs = Column(JSON, nullable=False)
+    internal_links = Column(JSON, nullable=False)
+    wiki_links = Column(JSON, nullable=False)
+    references = Column(JSON, nullable=False)
+    media = Column(JSON, nullable=False)
+
 
 class WikiCrawler:
     wiki_regex = re.compile("^https*://.*\.wikipedia\.org.*")
-    link_regex = re.compile("^https*://(!?.*wikipedia).*\..*")
+    link_regex = re.compile("^https*://.*\..*")
     header_regex = re.compile('^h[1-6]$')
 
     def __init__(self, db_name):
+        self.manager = None
         self.db_name = db_name
 
     def __enter__(self):
-        Base = declarative_base()
-
-        class DBEntry(Base):
-            __tablename__ = 'wikipages'
-            # id = Column(Integer)
-            url = Column(Text, nullable=False, primary_key=True)
-            title = Column(Text, nullable=False)
-            paragraphs = Column(JSON, nullable=False)
-            sub_headings = Column(JSON, nullable=False)
-            internal_links = Column(JSON, nullable=False)
-            wiki_links = Column(JSON, nullable=False)
-            references = Column(JSON, nullable=False)
-            media = Column(JSON, nullable=False)
-
-        self.manager = DBMan(self.db_name, Base, DBEntry)
+        self.manager = DBMan(self.db_name, DBEntry)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -47,15 +45,15 @@ class WikiCrawler:
 
         wiki['title'] = wiki['page'].find(id='firstHeading').get_text()
         wiki['paragraphs'] = self._paragraphs(wiki['page'])
-        wiki['sub_headings'], wiki['internal_links'] = self._page_links(wiki['url'], wiki['page'])
+        wiki['internal_links'] = self._page_links(wiki['url'], wiki['page'])
         wiki['wiki_links'] = self._wiki_links(wiki['page'])
         wiki['references'] = self._reference_links(wiki['page'])
         wiki['media'] = self._get_media(wiki['page'])
 
         if self.manager is not None:
             entry = self.manager.Node(url = wiki['url'], title = wiki['title'], paragraphs = (wiki['paragraphs']), 
-                                            sub_headings = (wiki['sub_headings']), internal_links = (wiki['internal_links']), 
-                                            wiki_links = (wiki['wiki_links']), references = (wiki['references']), media = (wiki['media']))
+                                        internal_links = (wiki['internal_links']), wiki_links = (wiki['wiki_links']), 
+                                        references = (wiki['references']), media = (wiki['media']))
 
             self.manager.session.add(entry)
 
@@ -84,16 +82,13 @@ class WikiCrawler:
         return paragraphs
 
     def _page_links(self, url, page):
-        sub_headings = {}
-        links = []
+        links = {}
 
         for li in page.find(id='toc').ul.find_all('li'):
-            index, name = li.a.get_text().split(' ', 1)
-            index = str(index)
-            sub_headings[index] = (name, li.a.get('href'))
-            links.append(url + sub_headings[index][1])
+            _, name = li.a.get_text().split(' ', 1)
+            links[name] = url + li.a.get('href')
 
-        return sub_headings, links
+        return links
 
     def _wiki_links(self, page):
         extern = []
@@ -132,7 +127,7 @@ def crawl_loop(urls):
         for url in urls:
             wc.crawl(url)
    
-   
+
 if __name__ == '__main__':
     # interactive_loop()
 
