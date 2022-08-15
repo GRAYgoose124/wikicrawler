@@ -3,7 +3,7 @@ import sqlalchemy as sa
 from sqlalchemy import Column, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, Text
+from sqlalchemy import create_engine, Text, JSON
 from sqlalchemy.sql.expression import func
 import re
 
@@ -22,7 +22,6 @@ def _regexp(expr, item):
 
 
 class DBMan():
-    
     def __init__(self, db_name, base, node):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         db_path = os.path.join(dir_path, db_name)

@@ -2,7 +2,7 @@ import urllib.request
 import urllib.parse
 from bs4 import BeautifulSoup as bs
 import json
-from db import DBMan, declarative_base, Column, Integer, Text
+from db import DBMan, declarative_base, Column, Integer, Text, JSON
 import re 
 
 # import nltk
@@ -10,40 +10,30 @@ import re
 # import networkx, matplotlib, plotly
 
 
-
-
-
-def get_wiki_page(wiki_url):
-    parsed_url = urllib.parse.urlparse(wiki_url)
-
-    if re.search("wikipedia.org", parsed_url.netloc):
-        return urllib.request.urlopen(wiki_url).read().decode("utf-8")
-    else:
-        return None
-
-
 class WikiCrawler:
     wiki_regex = re.compile("^https*://.*\.wikipedia\.org.*")
-    link_regex = re.compile("^https*://.*")
+    link_regex = re.compile("^https*://(!?.*wikipedia).*\..*")
     header_regex = re.compile('^h[1-6]$')
+
+    def __init__(self, db_name):
+        self.db_name = db_name
 
     def __enter__(self):
         Base = declarative_base()
 
         class DBEntry(Base):
             __tablename__ = 'wikipages'
-            id = Column(Integer, primary_key=True)
-            url = Column(Text, nullable=False)
-            page = Column(Text, nullable=False)
+            # id = Column(Integer)
+            url = Column(Text, nullable=False, primary_key=True)
             title = Column(Text, nullable=False)
-            paragraphs = Column(Text, nullable=False)
-            sub_headings = Column(Text, nullable=False)
-            internal_links = Column(Text, nullable=False)
-            wiki_links = Column(Text, nullable=False)
-            referencess = Column(Text, nullable=False)
-            media = Column(Text, nullable=False)
+            paragraphs = Column(JSON, nullable=False)
+            sub_headings = Column(JSON, nullable=False)
+            internal_links = Column(JSON, nullable=False)
+            wiki_links = Column(JSON, nullable=False)
+            references = Column(JSON, nullable=False)
+            media = Column(JSON, nullable=False)
 
-        self.manager = DBMan('wikipedia.db', Base, DBEntry)
+        self.manager = DBMan(self.db_name, Base, DBEntry)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -63,18 +53,22 @@ class WikiCrawler:
         wiki['media'] = self._get_media(wiki['page'])
 
         if self.manager is not None:
-            entry = self.manager.Node(url = wiki['url'], page = str(wiki['page'].contents), title = wiki['title'], paragraphs = wiki['paragraphs'], 
-                                            sub_headings = wiki['sub_headings'], internal_links = wiki['internal_links'], 
-                                            wiki_links = wiki['wiki_links'], referencess = wiki['references'], media = wiki['media'])
+            entry = self.manager.Node(url = wiki['url'], title = wiki['title'], paragraphs = (wiki['paragraphs']), 
+                                            sub_headings = (wiki['sub_headings']), internal_links = (wiki['internal_links']), 
+                                            wiki_links = (wiki['wiki_links']), references = (wiki['references']), media = (wiki['media']))
 
             self.manager.session.add(entry)
 
         return wiki
 
     def _visit(self, url):
-        page = get_wiki_page(url)
-        page_struct = bs(page, 'html.parser')
+        parsed_url = urllib.parse.urlparse(url)
 
+        page = None
+        if re.search("wikipedia.org", parsed_url.netloc):
+            page = urllib.request.urlopen(url).read().decode("utf-8")
+    
+        page_struct = bs(page, 'html.parser')
         return page_struct
 
     def _paragraphs(self, page):
@@ -123,18 +117,25 @@ class WikiCrawler:
     def _follow_page_ref(self):
         pass
 
+
 def interactive_loop():
     url = None
 
-    while url != "!quit":
-        url = input("wiki url: ")
-        wc = WikiCrawler(url)
-        print(wc.title, '\n', wc.summary)
+    with WikiCrawler('interactive_wiki.db') as wc:
+        while url != "!quit":
+            url = input("wiki url: ")
+            wc.crawl(url)
 
 
-if __name__ == '__main__':
-    pages = ['http://en.wikipedia.org/wiki/Philosophy', 'https://en.wikipedia.org/wiki/Existence']
-    
-    with WikiCrawler() as wc:
-        wc.crawl(pages[1])
+def crawl_loop(urls):
+    with WikiCrawler('wikipedia.db') as wc:
+        for url in urls:
+            wc.crawl(url)
    
+   
+if __name__ == '__main__':
+    # interactive_loop()
+
+    urls = ['http://en.wikipedia.org/wiki/Philosophy', 'https://en.wikipedia.org/wiki/Existence']
+    
+    crawl_loop(urls)
