@@ -4,6 +4,8 @@ import urllib.request
 import urllib.parse
 from bs4 import BeautifulSoup as bs
 import json
+from sqlalchemy.exc import NoResultFound
+from model_to_dict import model_to_dict
 from db import DBMan, Column, Text, JSON, Base
 import re 
 
@@ -40,42 +42,47 @@ class WikiCrawler:
         self.manager.close()
         self.manager = None
 
-    def crawl(self, url):
-        wiki = {}
-        wiki['url'] = url
-        wiki['page'] = self._visit(wiki['url'])
+    def retrieve(self, url, force_update=False):
+        try:
+            if force_update: # TODO: Timestamp field and auto-update after X interval.
+                raise NoResultFound("Forcing page update...")
 
-        wiki['title'] = wiki['page'].find(id='firstHeading').get_text()
-        wiki['paragraphs'] = self._paragraphs(wiki['page'])
-        wiki['internal_links'] = self._page_links(wiki['url'], wiki['page'])
-        wiki['wiki_links'] = self._wiki_links(wiki['page'])
-        wiki['references'] = self._reference_links(wiki['page'])
-        wiki['media'] = self._get_media(wiki['page'])
+            return model_to_dict(self.manager.session.query(self.manager.Node).filter(self.manager.Node.url == url).one())
+        except NoResultFound:
+            return self._update(url)
+        
+    def __update(self, url):
+        page = self._visit(url)
+        wiki = { 'url': url, 
+                 'title': page.find(id='firstHeading').get_text(), 
+                 'paragraphs': self.__paragraphs(page),
+                 'internal_links': self.__page_links(url, page), 
+                 'wiki_links': self.__wiki_links(page), 
+                 'references': self.__reference_links(page), 
+                 'media': self.__get_media(page) }
 
-        if self.manager is not None:
-            entry = self.manager.Node(url = wiki['url'], title = wiki['title'], paragraphs = (wiki['paragraphs']), 
-                                        internal_links = (wiki['internal_links']), wiki_links = (wiki['wiki_links']), 
-                                        references = (wiki['references']), media = (wiki['media']))
-
-            self.manager.session.merge(entry)
+        if self.manager is not None:    
+            print(f"Caching {url}...")
+            self.manager.session.merge(self.manager.Node(**wiki))
 
         return wiki
 
-    def _visit(self, url):
+    def __visit(self, url):
         parsed_url = urllib.parse.urlparse(url)
 
         page = None
         if re.search("wikipedia.org", parsed_url.netloc):
             page = urllib.request.urlopen(url).read().decode("utf-8")
+        else:
+            raise ValueError(url)
     
         page_struct = bs(page, 'html.parser')
         return page_struct
 
-    def _paragraphs(self, page):
+    def __paragraphs(self, page):
         paragraphs = []
-        body_start = page.find(id='mw-content-text').\
-            find(attrs={'class': 'mw-parser-output'})
 
+        body_start = page.find(id='mw-content-text').find(attrs={'class': 'mw-parser-output'})
         for pa in body_start.find_all('p'):     
             text = pa.get_text()
             if text != '' and text != '\n':
@@ -83,7 +90,7 @@ class WikiCrawler:
         
         return paragraphs
 
-    def _page_links(self, url, page):
+    def __page_links(self, url, page):
         links = {}
 
         for li in page.find(id='toc').ul.find_all('li'):
@@ -92,15 +99,15 @@ class WikiCrawler:
 
         return links
 
-    def _wiki_links(self, page):
-        extern = []
+    def __wiki_links(self, page):
+        links = []
 
         for wikilink in page.find_all('a', attrs={'href': self.wiki_regex}):
             extern.append(wikilink.get('href'))
 
-        return extern
+        return links
 
-    def _reference_links(self, page):
+    def __reference_links(self, page):
         links = []
 
         for a in page.find_all('a', attrs={'class': 'external text', 'href': self.link_regex}):
@@ -108,13 +115,15 @@ class WikiCrawler:
 
         return links
 
-    def _links_per_paragraph(self, paragraphs):
-        pass
+    def __links_per_paragraph(self, paragraphs):
+        links = []
 
-    def _get_media(self, page):
+        for para in paragraphs:
+            links.append()
+
+    def __get_media(self, page):
         paths = []
         for img in page.find_all('a', attrs={'class': "image"}):
-            # TODO: Needs to create a bs to get the fi
             url = 'https://en.wikipedia.org/' + img['href']
             dl_page = self._visit(url)
 
@@ -129,9 +138,8 @@ class WikiCrawler:
         
         return paths
 
-    def _follow_page_ref(self):
+    def __follow_page_ref(self):
         pass
-
 
 def interactive_loop():
     url = None
@@ -139,13 +147,16 @@ def interactive_loop():
     with WikiCrawler('interactive_wiki.db') as wc:
         while url != "DONE":
             url = input("wiki url: ")
-            wc.crawl(url)
+            wc.retrieve(url)
 
 
-def crawl_loop(urls):
+def loop(urls):
     with WikiCrawler('wikipedia.db') as wc:
+        pages = []
         for url in urls:
-            wc.crawl(url)
+            pages.append(wc.retrieve(url))
+
+    [print(page['paragraphs'][1]) for page in pages]
    
 
 if __name__ == '__main__':
@@ -153,4 +164,4 @@ if __name__ == '__main__':
 
     urls = ['http://en.wikipedia.org/wiki/Philosophy', 'https://en.wikipedia.org/wiki/Existence']
     
-    crawl_loop(urls)
+    loop(urls)

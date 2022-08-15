@@ -86,6 +86,7 @@ class CategoryWordGraph:
         object = None
 
         while wpt != "!q":
+            pass
            #word phrase thought loop wpt | associations <-> , ; [,] : [:] ^
            # associations lead to different link types
 
@@ -138,4 +139,4 @@ class WordGraph:
         pass
 
 if __name__ == '__main__':
-    
+    pass
