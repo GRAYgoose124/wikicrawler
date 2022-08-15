@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 import urllib.request
 import urllib.parse
 from bs4 import BeautifulSoup as bs
@@ -55,7 +57,7 @@ class WikiCrawler:
                                         internal_links = (wiki['internal_links']), wiki_links = (wiki['wiki_links']), 
                                         references = (wiki['references']), media = (wiki['media']))
 
-            self.manager.session.add(entry)
+            self.manager.session.merge(entry)
 
         return wiki
 
@@ -106,8 +108,26 @@ class WikiCrawler:
 
         return links
 
-    def _get_media(self, page):
+    def _links_per_paragraph(self, paragraphs):
         pass
+
+    def _get_media(self, page):
+        paths = []
+        for img in page.find_all('a', attrs={'class': "image"}):
+            # TODO: Needs to create a bs to get the fi
+            url = 'https://en.wikipedia.org/' + img['href']
+            dl_page = self._visit(url)
+
+            dl_link = dl_page.select('.fullMedia')[0].p.a
+            dl_path = Path('images', dl_link['title'])
+
+            if not dl_path.exists():
+                dl_url = "https://" + dl_link['href'].lstrip('//')
+                urllib.request.urlretrieve(dl_url, dl_path)
+
+            paths.append(str(dl_path))
+        
+        return paths
 
     def _follow_page_ref(self):
         pass
@@ -117,7 +137,7 @@ def interactive_loop():
     url = None
 
     with WikiCrawler('interactive_wiki.db') as wc:
-        while url != "!quit":
+        while url != "DONE":
             url = input("wiki url: ")
             wc.crawl(url)
 
