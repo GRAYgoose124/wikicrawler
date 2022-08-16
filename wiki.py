@@ -19,11 +19,11 @@ class DBWikiPageEntry(Base):
     url = Column(Text, nullable=False, primary_key=True)
     title = Column(Text, nullable=False)
     paragraphs = Column(JSON, nullable=False)
-    internal_links = Column(JSON, nullable=False)
+    internal_links = Column(JSON, nullable=False) # TODO: rename to toc_links
     wiki_links = Column(JSON, nullable=False)
     references = Column(JSON, nullable=False)
     media = Column(JSON, nullable=False)
-
+    stats = Column(JSON, nullable=True)
 
 class WikiCrawler:
     wiki_regex = re.compile("^https*://.*\.wikipedia\.org.*")
@@ -41,6 +41,13 @@ class WikiCrawler:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.manager.close()
         self.manager = None
+
+    def __contains__(self, url):
+        try:
+            self.manager.session.query(self.manager.Node).filter(self.manager.Node.url == url).one()
+            return True
+        except NoResultFound:
+            return False
 
     def retrieve(self, url, force_update=False):
         try:
@@ -63,8 +70,6 @@ class WikiCrawler:
                 self.manager.session.merge(self.manager.Node(**wiki))
 
             return wiki
-
-
 
     def __visit(self, url):
         parsed_url = urllib.parse.urlparse(url)
@@ -92,9 +97,12 @@ class WikiCrawler:
     def __page_links(self, url, page):
         links = {}
 
-        for li in page.find(id='toc').ul.find_all('li'):
-            _, name = li.a.get_text().split(' ', 1)
-            links[name] = url + li.a.get('href')
+        try:
+            for li in page.find(id='toc').ul.find_all('li'):
+                _, name = li.a.get_text().split(' ', 1)
+                links[name] = url + li.a.get('href')
+        except AttributeError:
+            pass # TODO: This this exception is thrown - it means there's no toc.
 
         return links
 

@@ -1,4 +1,7 @@
+#!/usr/bin/python
+
 import time
+import argparse
 from random import randint
 
 import nltk
@@ -79,6 +82,7 @@ def parse_page(page):
 
     return body, sentences, words, word_freq, collocs
 
+
 def analyze_pages(pages):
     structs = {}
 
@@ -89,10 +93,9 @@ def analyze_pages(pages):
 
 
 def analyze_page(page):
-    console.print(f"{'-'*80}\n[bold yellow]{page['title']} - {page['url']}[/bold yellow]")
+    body, sentences, words, word_freq, collocs = page['stats']
 
-    page_tuple = parse_page(page)
-    body, sentences, words, word_freq, collocs = page_tuple
+    console.print(f"{'-'*80}\n[bold yellow]{page['title']} - {page['url']}[/bold yellow]")
 
     print(word_freq, f'\n[bold magenta]Collocations[/bold magenta]({[" ".join(entry) for entry in collocs]})\n')
     print("[bold magenta]Sentences[/bold magenta]\n\t[bold red]First 5:[/bold red]")
@@ -105,10 +108,8 @@ def analyze_page(page):
     print("\t[bold red]Last 5:[/bold red]")
     print_sentiment(sentences[-5:])
 
-    return page_tuple
 
-
-def loop():
+def interactive_loop():
     traversal_depth = 16
     traversal_limit = 10000
     
@@ -150,5 +151,54 @@ def loop():
                         if user_url is not None and user_url not in finished_urls:
                             f.write('\n' + user_url)
 
+
+def updatedb():
+    pages = {}
+
+    urls = []
+    with open('urls.txt') as f:
+        for line in f:
+            # urls if you want to print on start history
+            urls.append(line)
+
+    with WikiCrawler('wikipedia.db') as wc:
+        # TODO: Store timestamps and update after X interval.
+        for url in urls:            
+            page = wc.retrieve(url)
+            page['stats'] = parse_page(page)
+
+            pages[page['title']] = page
+
+            analyze_page(page)
+
+    return pages
+
+
+def oneshot(url):
+    if WikiCrawler.wiki_regex.match(url):
+        with WikiCrawler('wikipedia.db') as wc:            
+            page = wc.retrieve(url)
+            page['stats'] = parse_page(page)
+
+            analyze_page(page)
+
+        with open('urls.txt', 'a+') as f:
+            if url not in f:
+                f.write(url + '\n')    
+    else: 
+        print("Invalid URL!")
+
+
 if __name__ == '__main__' :
-    loop()
+    parser = argparse.ArgumentParser(description="Digest wikipedia articles.")
+    parser.add_argument('url', action='store', nargs='?', type=str, help="URL of wikipedia article to digest.")
+
+    args = parser.parse_args()
+    url = args.url
+
+    if args.url:
+        print(f"Looking up {args.url}...")
+        oneshot(url)
+    else:
+        print("Updating db with urls.txt...")
+        updatedb()
