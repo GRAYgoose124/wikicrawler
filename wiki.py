@@ -64,6 +64,8 @@ class WikiCrawler:
 
             return wiki
 
+
+
     def __visit(self, url):
         parsed_url = urllib.parse.urlparse(url)
 
