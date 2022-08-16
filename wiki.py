@@ -107,6 +107,7 @@ class WikiCrawler:
     def __reference_links(self, page):
         links = []
 
+        # TODO: Follow cite_notes to properly associate with paragraphs.
         for a in page.find_all('a', attrs={'class': 'external text', 'href': self.link_regex}):
             links.append((a['href'], a.get_text())) 
 
