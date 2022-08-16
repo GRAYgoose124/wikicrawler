@@ -13,6 +13,7 @@ from rich.color import Color
 from rich.highlighter import Highlighter
 
 from input_timeout import input_with_timeout
+from inputimeout import inputimeout, TimeoutOccurred
 
 from wiki import WikiCrawler
 
@@ -26,7 +27,7 @@ fillerwords = ['at', 'their', 'been', 'which', 'on',
                 'or', 'not', 'by', 'be', 'it', "'s", 'i', 'for', 
                 'with', 'an', 'has', 'have', 'some', 'were', 'but', 
                 'this', 'its', 'such', 'who', 'his', 'her']
-blacklist = ["'", ':', '_', '\\', ',', '.', '(', ')', '{', '}', '``', "''", "[", "]"] + fillerwords
+blacklist = ['!', "'", ':', '_', '\\', ',', '.', '(', ')', '{', '}', '``', "''", "[", "]"] + fillerwords
 
 
 def print_sentiment(sentences):
@@ -136,19 +137,18 @@ def loop():
             # daemon
             while len(urls) < 1:
                 # From stdin
-                user_url = input_with_timeout("Enter a wiki URL", timeout=10.0)
-                if user_url is not None and wc.wiki_regex.match(user_url):
+                user_url = input_with_timeout("Enter a wiki URL: ", timeout=3)
+
+                if user_url is not None and wc.wiki_regex.match(user_url) and user_url not in urls:
                     urls.append(user_url)
-                    print(user_url)
 
                 # from file watcher
                 with open('urls.txt', 'a+') as f:
                     for line in f:
                         if line not in urls and line not in finished_urls:
                             urls.append(line)
-                    if user_url is not None and user_url not in finished_urls:
-                        f.write(user_url)
-
+                        if user_url is not None and user_url not in finished_urls:
+                            f.write('\n' + user_url)
 
 if __name__ == '__main__' :
     loop()

@@ -12,14 +12,15 @@ channel = queue.Queue()
 
 
 def input_with_timeout(message, timeout):
-    message = message + " [{} sec timeout] ".format(timeout)
-    thread = threading.Thread(target=get_input, args=(message, channel))
+    message = " [{} sec timeout] ".format(timeout) + message
+    thread = threading.Thread(target=get_input, args=("", channel))
     # by setting this as a daemon thread, python won't wait for it to complete
     thread.daemon = True
     thread.start()
 
     try:
         response = channel.get(True, timeout)
+
         return response
     except queue.Empty:
         pass
