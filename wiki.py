@@ -13,7 +13,7 @@ import re
 # import tensorflow, numpy, etc
 # import networkx, matplotlib, plotly
 
-class DBEntry(Base):
+class DBWikiPageEntry(Base):
     __tablename__ = 'wikipages'
     # id = Column(Integer)
     url = Column(Text, nullable=False, primary_key=True)
@@ -35,7 +35,7 @@ class WikiCrawler:
         self.db_name = db_name
 
     def __enter__(self):
-        self.manager = DBMan(self.db_name, DBEntry)
+        self.manager = DBMan(self.db_name, DBWikiPageEntry)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -49,23 +49,20 @@ class WikiCrawler:
 
             return model_to_dict(self.manager.session.query(self.manager.Node).filter(self.manager.Node.url == url).one())
         except NoResultFound:
-            return self._update(url)
-        
-    def __update(self, url):
-        page = self._visit(url)
-        wiki = { 'url': url, 
-                 'title': page.find(id='firstHeading').get_text(), 
-                 'paragraphs': self.__paragraphs(page),
-                 'internal_links': self.__page_links(url, page), 
-                 'wiki_links': self.__wiki_links(page), 
-                 'references': self.__reference_links(page), 
-                 'media': self.__get_media(page) }
+            page = self.__visit(url)
+            wiki = { 'url': url, 
+                    'title': page.find(id='firstHeading').get_text(), 
+                    'paragraphs': self.__paragraphs(page),
+                    'internal_links': self.__page_links(url, page), 
+                    'wiki_links': self.__wiki_links(page), 
+                    'references': self.__reference_links(page), 
+                    'media': self.__get_media(page) }
 
-        if self.manager is not None:    
-            print(f"Caching {url}...")
-            self.manager.session.merge(self.manager.Node(**wiki))
+            if self.manager is not None:    
+                print(f"Caching {url}...")
+                self.manager.session.merge(self.manager.Node(**wiki))
 
-        return wiki
+            return wiki
 
     def __visit(self, url):
         parsed_url = urllib.parse.urlparse(url)
@@ -103,7 +100,7 @@ class WikiCrawler:
         links = []
 
         for wikilink in page.find_all('a', attrs={'href': self.wiki_regex}):
-            extern.append(wikilink.get('href'))
+            links.append(wikilink.get('href'))
 
         return links
 
@@ -125,7 +122,7 @@ class WikiCrawler:
         paths = []
         for img in page.find_all('a', attrs={'class': "image"}):
             url = 'https://en.wikipedia.org/' + img['href']
-            dl_page = self._visit(url)
+            dl_page = self.__visit(url)
 
             dl_link = dl_page.select('.fullMedia')[0].p.a
             dl_path = Path('images', dl_link['title'])
@@ -141,27 +138,15 @@ class WikiCrawler:
     def __follow_page_ref(self):
         pass
 
+
 def interactive_loop():
     url = None
 
     with WikiCrawler('interactive_wiki.db') as wc:
         while url != "DONE":
             url = input("wiki url: ")
-            wc.retrieve(url)
+            print(wc.retrieve(url))
 
-
-def loop(urls):
-    with WikiCrawler('wikipedia.db') as wc:
-        pages = []
-        for url in urls:
-            pages.append(wc.retrieve(url))
-
-    [print(page['paragraphs'][1]) for page in pages]
-   
 
 if __name__ == '__main__':
-    # interactive_loop()
-
-    urls = ['http://en.wikipedia.org/wiki/Philosophy', 'https://en.wikipedia.org/wiki/Existence']
-    
-    loop(urls)
+    interactive_loop()
