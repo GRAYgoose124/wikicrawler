@@ -18,7 +18,7 @@ from rich.highlighter import Highlighter
 from input_timeout import input_with_timeout
 from inputimeout import inputimeout, TimeoutOccurred
 
-from wiki import WikiCrawler
+from crawler import WikiCrawler
 
 
 console = Console()
@@ -59,7 +59,6 @@ def print_sentiment(sentences):
 
 
 def parse_page(page):
-    # TODO: change vocab() to manual call (factoring out Text) and use TrigramCollocationFinder instead of Text.collocation_list
     body = " ".join(page['paragraphs'])
     sentences = nltk.sent_tokenize(body)
     words = nltk.word_tokenize(body)
@@ -109,54 +108,11 @@ def analyze_page(page):
     print_sentiment(sentences[-5:])
 
 
-def interactive_loop():
-    traversal_depth = 16
-    traversal_limit = 10000
-    
-    urls = []
-    finished_urls = []
-    with open('urls.txt') as f:
-        for line in f:
-            # urls if you want to print on start history
-            finished_urls.append(line)
-
-    with WikiCrawler('wikipedia.db') as wc:
-        pages = {}
-        structs = {}
-
-        while True:
-            try:
-                url = urls.pop()
-                finished_urls.append(url)
-                
-                wiki = wc.retrieve(url)
-                pages[wiki['title']] = wiki
-                structs[wiki['title']] = analyze_page(wiki)
-            except:
-                pass
-
-            # daemon
-            while len(urls) < 1:
-                # From stdin
-                user_url = input_with_timeout("Enter a wiki URL: ", timeout=3)
-
-                if user_url is not None and wc.wiki_regex.match(user_url) and user_url not in urls:
-                    urls.append(user_url)
-
-                # from file watcher
-                with open('urls.txt', 'a+') as f:
-                    for line in f:
-                        if line not in urls and line not in finished_urls:
-                            urls.append(line)
-                        if user_url is not None and user_url not in finished_urls:
-                            f.write('\n' + user_url)
-
-
-def updatedb():
+def updatedb(path):
     pages = {}
 
     urls = []
-    with open('urls.txt') as f:
+    with open(path) as f:
         for line in f:
             # urls if you want to print on start history
             urls.append(line)
@@ -201,4 +157,4 @@ if __name__ == '__main__' :
         oneshot(url)
     else:
         print("Updating db with urls.txt...")
-        updatedb()
+        updatedb('/home/goose/Documents/coding/current_lesser/wikiwebber/wikiwebber/urls.txt')

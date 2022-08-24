@@ -8,10 +8,12 @@ from sqlalchemy.exc import NoResultFound
 from model_to_dict import model_to_dict
 from db import DBMan, Column, Text, JSON, Base
 import re 
+import threading
 
 # import nltk
 # import tensorflow, numpy, etc
 # import networkx, matplotlib, plotly
+
 
 class DBWikiPageEntry(Base):
     __tablename__ = 'wikipages'
@@ -24,6 +26,7 @@ class DBWikiPageEntry(Base):
     references = Column(JSON, nullable=False)
     media = Column(JSON, nullable=False)
     stats = Column(JSON, nullable=True)
+
 
 class WikiCrawler:
     wiki_regex = re.compile("^https*://.*\.wikipedia\.org.*")
@@ -50,6 +53,8 @@ class WikiCrawler:
             return False
 
     def retrieve(self, url, force_update=False):
+        # TODO: Add optional nodb keyword.
+        # TODO: Add raw `page` save to file. symlink to it in wiki['cached'] or similar
         try:
             if force_update: # TODO: Timestamp field and auto-update after X interval.
                 raise NoResultFound("Forcing page update...")
@@ -133,20 +138,22 @@ class WikiCrawler:
         paths = []
         for img in page.find_all('a', attrs={'class': "image"}):
             url = 'https://en.wikipedia.org/' + img['href']
+            # TODO: Move retrieval to worker thread.G121
             dl_page = self.__visit(url)
 
             dl_link = dl_page.select('.fullMedia')[0].p.a
-            dl_path = Path('images', dl_link['title'])
+            dl_path = Path('/home/goose/Documents/coding/current_lesser/wikiwebber/wikiwebber/images', dl_link['title'])
 
             if not dl_path.exists():
                 dl_url = "https://" + dl_link['href'].lstrip('//')
-                urllib.request.urlretrieve(dl_url, dl_path)
+                t = threading.Thread(target=lambda: urllib.request.urlretrieve(dl_url, dl_path), args=(), daemon=True)
+                t.start()
 
             paths.append(str(dl_path))
         
         return paths
 
-    def __follow_page_ref(self):
+    def __follow_page_re(self):
         pass
 
 
