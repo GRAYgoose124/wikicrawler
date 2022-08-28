@@ -1,15 +1,20 @@
-from db import DBMan, DBPageEntry, Column, Text, JSON, Base
+import os
+
+from database import DBMan, DBPageEntry, Column, Text, JSON, Base
 from sqlalchemy.exc import NoResultFound
 
 
 class PageCacher:
-    def __init__(self, db_name):
+    def __init__(self, db_path):
         self.manager = None
-        self.db_name = db_name
+        self.db_path = db_path
+
+        if not os.path.exists(db_path):
+            os.makedirs(db_path)
 
     def __enter__(self):
         # Dummy implementation, see db.py for more info. 
-        self.manager = DBMan(self.db_name, DBPageEntry)
+        self.manager = DBMan(self.db_path, DBPageEntry)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -35,10 +40,10 @@ class DBWikiPageEntry(DBPageEntry, Base):
     toc_links = Column(JSON, nullable=False) # TODO: rename to toc_links
     see_also = Column(JSON, nullable=True)
     references = Column(JSON, nullable=False)
-    media = Column(JSON, nullable=False)
+    media = Column(JSON, nullable=True)
 
 
 class WikiCacher(PageCacher):
     def __enter__(self):
-        self.manager = DBMan(self.db_name, DBWikiPageEntry)
+        self.manager = DBMan(self.db_path, DBWikiPageEntry)
         return self

@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup as bs
 import json
 
 import re 
-import threading
+from utils.multitask import xmap
 
 from cacher import WikiCacher
 
@@ -16,20 +16,28 @@ from cacher import WikiCacher
 # import networkx, matplotlib, plotly
 
 
-# TODO: Rename this a "Grabber" so the crawler can traverse.
 class WikiGrabber:
     wiki_regex = re.compile("^https*://.*\.wikipedia\.org.*")
     link_regex = re.compile("^https*://.*\..*")
     header_regex = re.compile('^h[1-6]$')
 
-    def __init__(self, cacher=None):
+    def __init__(self, media_folder="/images", save_media=True, cacher=None):
         self.cacher = cacher
+
+        self.save_media = save_media
+        self.media_save_location = media_folder
+        if self.save_media and not os.path.exists(self.media_save_location):
+            os.makedirs(self.media_save_location)
 
     def retrieve(self, url):
         # TODO: Add optional nodb keyword.
         page = self.__visit(url)
 
         paragraphs, para_links = self.__paragraphs(page)
+
+        media_list = None
+        if self.save_media:
+            media_list = self.__get_media(page) 
 
         wiki = { 'url': url, 
                 'title': page.find(id='firstHeading').get_text(), 
@@ -38,7 +46,7 @@ class WikiGrabber:
                 'see_also': self.__see_also(page),
                 'toc_links': self.__page_links(page), 
                 'references': self.__reference_links(page), 
-                'media': self.__get_media(page) }
+                'media': media_list}
 
         if self.cacher is not None:
             self.cacher.cache(wiki)
@@ -57,6 +65,8 @@ class WikiGrabber:
         page_struct = bs(page, 'html.parser')
         page_struct.url = url
         return page_struct
+
+    # Wikipedia page parsing
 
     def __paragraphs(self, page):
         # rip paragraphs - TODO:get links from paragraph too
@@ -126,34 +136,25 @@ class WikiGrabber:
 
         return see_also
 
-    def __links_per_paragraph(self, paragraphs):
-        links = []
-
-        # NOTE: won't work as is, paragraphs get filtered by get_text
-        for para in paragraphs:
-            links.append()
-
     def __get_media(self, page):
-        paths = []
+        save_locs = []
+        dl_urls = []
         for img in page.find_all('a', attrs={'class': "image"}):
             url = 'https://en.wikipedia.org/' + img['href']
             # TODO: Fix worker thread blocking.
             dl_page = self.__visit(url)
 
             dl_link = dl_page.select('.fullMedia')[0].p.a
-            dl_path = Path(os.getcwd() + '/images', dl_link['title'])
+            save_loc = Path(self.media_save_location, dl_link['title'])
 
-            if not dl_path.exists():
-                dl_url = "https://" + dl_link['href'].lstrip('//')
-                t = threading.Thread(target=lambda: urllib.request.urlretrieve(dl_url, dl_path), args=(), daemon=True)
-                t.start()
-
-            paths.append(str(dl_path))
+            if not save_loc.exists():
+                dl_urls.append("https://" + dl_link['href'].lstrip('//'))
+                save_locs.append(str(save_loc))
         
-        return paths
+        # Download the media with workers. TODO: Handle with asyncio loop to avoid blocking caller.
+        xmap(lambda x: urllib.request.urlretrieve(*x), zip(dl_urls, save_locs))
 
-    def __follow_page_re(self):
-        pass
+        return save_locs
 
 
 # ----------------------------------------------------------------
@@ -161,7 +162,7 @@ class WikiGrabber:
 
 def interactive_loop():
     url = None
-    db_path = os.getcwd().rsplit('/', 1)[0] + '/databases/inter_wiki.db'
+    db_path = os.getcwd() + '/databases/inter_wiki.db'
 
     with WikiCacher(db_path) as wc:
         crawler = WikiGrabber(cacher=wc)
@@ -177,12 +178,12 @@ def interactive_loop():
 def oneshot():
     url = None
     db_path = os.getcwd() + '/databases/oneshot_wiki.db'
+    media_path = os.getcwd() + '/images_grabber_os'
 
-    print(db_path)
     with WikiCacher(db_path) as wc:
-        crawler = WikiGrabber(cacher=wc)
+        crawler = WikiGrabber(media_folder=media_path, cacher=wc)
 
-        print(crawler.retrieve("https://en.wikipedia.org/wiki/Q.E.D."))
+        print(crawler.retrieve("https://en.wikipedia.org/wiki/Star"))
 
 
 if __name__ == '__main__':
