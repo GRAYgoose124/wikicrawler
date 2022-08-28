@@ -131,6 +131,7 @@ def updatedb(path):
 
 
 def oneshot(url):
+    # TODO: db has been updated need to change page['stats']
     if WikiCrawler.wiki_regex.match(url):
         with WikiCrawler('wikipedia.db') as wc:            
             page = wc.retrieve(url)
