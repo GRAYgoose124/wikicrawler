@@ -16,60 +16,58 @@ lang_code = "en"
 base_url = f"https://{lang_code}.wikipedia.org"
 
 
-def fetch(url):
-    response = urllib.request.urlopen(url)
-    soup = bs(response, 'html.parser')
-    soup.url = url
+# TODO: Factor for seeker to use grabber instead. LIkely just means class Seeker(Grabber)
+class WikiSeeker:
+    def __init__(self, grabber):
+        self.grabber = grabber
 
-    return soup
+    def __catlinks(self, page):
+        categories = {}
+        
+        for link in page.find(id="catlinks", class_="catlinks").find_all('a'):
+            categories[link['title']] = link['href']
 
+        return categories
 
-def catlinks(page):
-    categories = {}
-    
-    for link in page.find(id="catlinks", class_="catlinks").find_all('a'):
-        categories[link['title']] = link['href']
-    return categories
+    def __disambiglinks(self, page):
+        links = {}
+        """This function assumes that it's being passed an identified disambiguation page."""
+        for link in page.select('.mw-parser-output')[0].find_all('a'):
+            try:
+                if link['href'].startswith('/wiki/'):
+                    links[link['title']] = link['href']
+            except KeyError:
+                pass
 
+        return links
 
-def disambiglinks(page):
-    links = {}
-    """This function assumes that it's being passed an identified disambiguation page."""
-    for link in page.select('.mw-parser-output')[0].find_all('a'):
-        try:
-            if link['href'].startswith('/wiki/'):
-                links[link['title']] = link['href']
-        except KeyError:
-            pass
+    def search(self, phrase):
+        search_url = f"{base_url}/wiki/Special:Search?search={urllib.parse.quote(phrase, safe='')}&"
 
-    return links
+        # retrieve search page results - may be disambig, wikipage, or other?
+        results = self.grabber.fetch(search_url)
 
+        # handle disambiguation
+        categories = self.__catlinks(results)
+        if any(["Disambiguation" in cat for cat in categories]):
+            options = list(self.__disambiglinks(results).values())
+            results = options
 
-def wikisearch(phrase):
-    search_url = f"{base_url}/wiki/Special:Search?search={urllib.parse.quote(phrase, safe='')}&"
+        # retrieve actual results
+        if isinstance(results, list):
+            for result in results:
+                yield self.grabber.retrieve(base_url + result, soup=True)
+        else:
+            yield self.grabber.retrieve(results.url, soup=True)
 
-    soup = fetch(search_url)
+        return
 
-    # handle disambiguation
-    categories = catlinks(soup)
-    if any(["Disambiguation" in cat for cat in categories]):
-        options = list(disambiglinks(soup).values())
-        soup = options
-
-    return soup
-
-
-def wikifetch(phrase):
-    results = wikisearch(phrase)
-
-    if isinstance(results, list):
-        for result in results:
-            yield fetch(base_url + result)
-    else:
-        yield fetch(base_url + result)
-
-    return
 
 if __name__ == '__main__':
-    for result in wikifetch(input("Wiki search: ")):
-        print(result.url)
+    db_path = os.getcwd() + '/databases/seekerwiki.db'
+
+    with WikiCacher(db_path) as wc:
+        seeker = WikiSeeker(WikiGrabber( cacher=wc))
+
+        for result in seeker.search(input("Wiki search: ")):
+            print(result.url)

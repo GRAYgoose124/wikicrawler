@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup as bs
 import json
 
 import re 
+import threading
 from utils.multitask import xmap
 
 from cacher import WikiCacher
@@ -21,17 +22,36 @@ class WikiGrabber:
     link_regex = re.compile("^https*://.*\..*")
     header_regex = re.compile('^h[1-6]$')
 
-    def __init__(self, media_folder="/images", save_media=True, cacher=None):
+    def __init__(self, media_folder=None, save_media=True, cacher=None):
         self.cacher = cacher
 
         self.save_media = save_media
-        self.media_save_location = media_folder
+        if media_folder is not None:
+            self.media_save_location = media_folder
+        else:
+            self.media_save_location = os.getcwd() + '/images'
+
         if self.save_media and not os.path.exists(self.media_save_location):
             os.makedirs(self.media_save_location)
 
-    def retrieve(self, url):
+    def fetch(self, url):
+        parsed_url = urllib.parse.urlparse(url)
+
+        page = None
+        if re.search("wikipedia.org", parsed_url.netloc):
+            response = urllib.request.urlopen(url)
+            url = response.geturl()
+            page = response.read().decode("utf-8")
+        else:
+            raise ValueError(url)
+    
+        page_struct = bs(page, 'html.parser')
+        page_struct.url = url
+        return page_struct
+
+    def retrieve(self, url, soup=False):
         # TODO: Add optional nodb keyword.
-        page = self.__visit(url)
+        page = self.fetch(url)
 
         paragraphs, para_links = self.__paragraphs(page)
 
@@ -51,20 +71,10 @@ class WikiGrabber:
         if self.cacher is not None:
             self.cacher.cache(wiki)
             
-        return wiki
-
-    def __visit(self, url):
-        parsed_url = urllib.parse.urlparse(url)
-
-        page = None
-        if re.search("wikipedia.org", parsed_url.netloc):
-            page = urllib.request.urlopen(url).read().decode("utf-8")
+        if soup:
+            return page
         else:
-            raise ValueError(url)
-    
-        page_struct = bs(page, 'html.parser')
-        page_struct.url = url
-        return page_struct
+            return wiki
 
     # Wikipedia page parsing
 
@@ -139,20 +149,23 @@ class WikiGrabber:
     def __get_media(self, page):
         save_locs = []
         dl_urls = []
+
         for img in page.find_all('a', attrs={'class': "image"}):
             url = 'https://en.wikipedia.org/' + img['href']
             # TODO: Fix worker thread blocking.
-            dl_page = self.__visit(url)
+            dl_page = self.fetch(url)
 
             dl_link = dl_page.select('.fullMedia')[0].p.a
+
+            dl_url = "https://" + dl_link['href'].lstrip('//')
             save_loc = Path(self.media_save_location, dl_link['title'])
 
             if not save_loc.exists():
-                dl_urls.append("https://" + dl_link['href'].lstrip('//'))
                 save_locs.append(str(save_loc))
-        
-        # Download the media with workers. TODO: Handle with asyncio loop to avoid blocking caller.
-        xmap(lambda x: urllib.request.urlretrieve(*x), zip(dl_urls, save_locs))
+
+                # Download the media with workers. TODO: Handle with asyncio loop to avoid blocking caller.
+                t = threading.Thread(target=lambda: urllib.request.urlretrieve(dl_url, save_loc), daemon=True)
+                t.start()
 
         return save_locs
 
@@ -178,10 +191,9 @@ def interactive_loop():
 def oneshot():
     url = None
     db_path = os.getcwd() + '/databases/oneshot_wiki.db'
-    media_path = os.getcwd() + '/images_grabber_os'
 
     with WikiCacher(db_path) as wc:
-        crawler = WikiGrabber(media_folder=media_path, cacher=wc)
+        crawler = WikiGrabber(cacher=wc)
 
         print(crawler.retrieve("https://en.wikipedia.org/wiki/Star"))
 

@@ -1,6 +1,7 @@
 import os
 
 from grabber import WikiGrabber
+from seeker import wikifetch
 from cacher import WikiCacher
 from parasentiment import analyze_page, parse_page
 
