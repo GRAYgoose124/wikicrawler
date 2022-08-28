@@ -2,6 +2,7 @@
 
 import time
 import argparse
+import os
 from random import randint
 
 import nltk
@@ -15,10 +16,11 @@ from rich.console import Console
 from rich.color import Color
 from rich.highlighter import Highlighter
 
-from input_timeout import input_with_timeout
+from utils.input_timeout import input_with_timeout
 from inputimeout import inputimeout, TimeoutOccurred
 
-from crawler import WikiCrawler
+from grabber import WikiGrabber
+from cacher import WikiCacher
 
 
 console = Console()
@@ -117,10 +119,11 @@ def updatedb(path):
             # urls if you want to print on start history
             urls.append(line)
 
-    with WikiCrawler('wikipedia.db') as wc:
-        # TODO: Store timestamps and update after X interval.
+    with WikiCacher(os.getcwd() + '/databases/parasentimentwiki.db') as wc:
+        crawler = WikiGrabber(cacher=wc)
+        # TODO: Store timestamps and update after X interval or after db file modification date.
         for url in urls:            
-            page = wc.retrieve(url)
+            page = crawler.retrieve(url)
             page['stats'] = parse_page(page)
 
             pages[page['title']] = page
@@ -132,9 +135,11 @@ def updatedb(path):
 
 def oneshot(url):
     # TODO: db has been updated need to change page['stats']
-    if WikiCrawler.wiki_regex.match(url):
-        with WikiCrawler('wikipedia.db') as wc:            
-            page = wc.retrieve(url)
+    if WikiGrabber.wiki_regex.match(url):
+        with WikiCacher(os.getcwd() + '/databases/parasentimentwiki.db') as wc:
+            crawler = WikiGrabber(cacher=wc)
+
+            page = crawler.retrieve(url)
             page['stats'] = parse_page(page)
 
             analyze_page(page)

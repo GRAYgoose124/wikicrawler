@@ -1,5 +1,8 @@
-from crawler import WikiCrawler
-from para import analyze_page, parse_page
+import os
+
+from grabber import WikiGrabber
+from cacher import WikiCacher
+from parasentiment import analyze_page, parse_page
 
 
 class WikiHopper:
@@ -7,10 +10,8 @@ class WikiHopper:
         path = []
 
         current_url = url
-        with WikiCrawler('wikipedia.db') as wc:
-            page = wc.retrieve(current_url)
-            
-
+        with WikiCacher(os.getcwd() + '/databases/hopper.db') as wc:
+            crawler = WikiGrabber(cacher=wc)
 
 
 if __name__ == '__main__':
