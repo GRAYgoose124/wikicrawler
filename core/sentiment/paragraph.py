@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 import time
-import argparse
 import os
 from random import randint
 
@@ -16,11 +15,8 @@ from rich.console import Console
 from rich.color import Color
 from rich.highlighter import Highlighter
 
-from utils.input_timeout import input_with_timeout
 from inputimeout import inputimeout, TimeoutOccurred
 
-from grabber import WikiGrabber
-from cacher import WikiCacher
 
 
 console = Console()
@@ -84,17 +80,8 @@ def parse_page(page):
     return body, sentences, words, word_freq, collocs
 
 
-def analyze_pages(pages):
-    structs = {}
-
-    for title, page in pages.items():
-       structs[title] = analyze_page(page)
-
-    return structs
-
-
 def analyze_page(page):
-    body, sentences, words, word_freq, collocs = page['stats']
+    body, sentences, words, word_freq, collocs = parse_page(page)
 
     console.print(f"{'-'*80}\n[bold yellow]{page['title']} - {page['url']}[/bold yellow]")
 
@@ -110,57 +97,10 @@ def analyze_page(page):
     print_sentiment(sentences[-5:])
 
 
-def updatedb(path):
-    pages = {}
+def analyze_pages(pages):
+    structs = {}
 
-    urls = []
-    with open(path) as f:
-        for line in f:
-            # urls if you want to print on start history
-            urls.append(line)
+    for title, page in pages.items():
+       structs[title] = analyze_page(page)
 
-    with WikiCacher(os.getcwd() + '/databases/parasentimentwiki.db') as wc:
-        crawler = WikiGrabber(cacher=wc)
-        # TODO: Store timestamps and update after X interval or after db file modification date.
-        for url in urls:            
-            page = crawler.retrieve(url)
-            page['stats'] = parse_page(page)
-
-            pages[page['title']] = page
-
-            analyze_page(page)
-
-    return pages
-
-
-def oneshot(url):
-    # TODO: db has been updated need to change page['stats']
-    if WikiGrabber.wiki_regex.match(url):
-        with WikiCacher(os.getcwd() + '/databases/parasentimentwiki.db') as wc:
-            crawler = WikiGrabber(cacher=wc)
-
-            page = crawler.retrieve(url)
-            page['stats'] = parse_page(page)
-
-            analyze_page(page)
-
-        with open('urls.txt', 'a+') as f:
-            if url not in f:
-                f.write(url + '\n')    
-    else: 
-        print("Invalid URL!")
-
-
-if __name__ == '__main__' :
-    parser = argparse.ArgumentParser(description="Digest wikipedia articles.")
-    parser.add_argument('url', action='store', nargs='?', type=str, help="URL of wikipedia article to digest.")
-
-    args = parser.parse_args()
-    url = args.url
-
-    if args.url:
-        print(f"Looking up {args.url}...")
-        oneshot(url)
-    else:
-        print("Updating db with urls.txt...")
-        updatedb('/home/goose/Documents/coding/current_lesser/wikiwebber/wikiwebber/urls.txt')
+    return structs

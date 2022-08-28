@@ -9,8 +9,6 @@ from bs4 import BeautifulSoup as bs
 
 from grabber import WikiGrabber
 from cacher import WikiCacher
-from parasentiment import analyze_page, parse_page
-
 
 lang_code = "en"
 base_url = f"https://{lang_code}.wikipedia.org"
@@ -53,7 +51,7 @@ class WikiSeeker:
             options = list(self.__disambiglinks(results).values())
             results = options
 
-        # retrieve actual results
+        # retrieve actual results - using retrieve for caching.
         if isinstance(results, list):
             for result in results:
                 yield self.grabber.retrieve(base_url + result, soup=True)
@@ -64,10 +62,11 @@ class WikiSeeker:
 
 
 if __name__ == '__main__':
-    db_path = os.getcwd() + '/databases/seekerwiki.db'
+    db_path = os.getcwd() + '/data/databases/seekerwiki.db'
 
     with WikiCacher(db_path) as wc:
-        seeker = WikiSeeker(WikiGrabber( cacher=wc))
+        grabber = WikiGrabber(cacher=wc)
+        seeker = WikiSeeker(grabber)
 
         for result in seeker.search(input("Wiki search: ")):
             print(result.url)

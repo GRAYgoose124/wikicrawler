@@ -8,9 +8,8 @@ import json
 
 import re 
 import threading
-from utils.multitask import xmap
 
-from cacher import WikiCacher
+from core.db.cacher import WikiCacher
 
 # import nltk
 # import tensorflow, numpy, etc
@@ -29,7 +28,7 @@ class WikiGrabber:
         if media_folder is not None:
             self.media_save_location = media_folder
         else:
-            self.media_save_location = os.getcwd() + '/images'
+            self.media_save_location = os.getcwd() + '/data/images'
 
         if self.save_media and not os.path.exists(self.media_save_location):
             os.makedirs(self.media_save_location)
@@ -175,7 +174,7 @@ class WikiGrabber:
 
 def interactive_loop():
     url = None
-    db_path = os.getcwd() + '/databases/inter_wiki.db'
+    db_path = os.getcwd() + '/data/databases/inter_wiki.db'
 
     with WikiCacher(db_path) as wc:
         crawler = WikiGrabber(cacher=wc)
@@ -190,7 +189,7 @@ def interactive_loop():
 
 def oneshot():
     url = None
-    db_path = os.getcwd() + '/databases/oneshot_wiki.db'
+    db_path = os.getcwd() + '/data/databases/oneshot_wiki.db'
 
     with WikiCacher(db_path) as wc:
         crawler = WikiGrabber(cacher=wc)

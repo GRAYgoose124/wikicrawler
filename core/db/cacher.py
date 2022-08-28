@@ -1,6 +1,6 @@
 import os
 
-from database import DBMan, DBPageEntry, Column, Text, JSON, Base
+from .database import DBMan, DBPageEntry, Column, Text, JSON, Base
 from sqlalchemy.exc import NoResultFound
 
 
@@ -11,7 +11,7 @@ class PageCacher:
         if db_path is not None:
             self.db_path, self.db_name = db_path.rsplit('/', 1)
         else:
-            self.db_path, self.db_name = os.getcwd() + '/databases', 'database.db'
+            self.db_path, self.db_name = os.getcwd() + '/data/databases', 'database.db'
 
         # splitting to remove db name from path
         db_root = db_path.rsplit(os.path.sep, 1)[0]
