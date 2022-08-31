@@ -1,4 +1,6 @@
-TODO: Refactor to use asyncio - mostly fixes media blocking issues.
-TODO: setuptools/setup.py may be required for sibling-submodule access.
-TODO: unit testing
-TODO: Use logging for debugging/unittest purposes
+- TODO: Refactor to use asyncio - mostly fixes media blocking issues.
+- TODO: setuptools/setup.py may be required for sibling-submodule access.
+- TODO: unit testing
+- TODO: Use logging for debugging/unittest purposes
+- TODO: Flit to use cli tools on editable install.
+- TODO: Unify project root - getcwd will pollute the fs on runs in the wrong directory for no good reason.

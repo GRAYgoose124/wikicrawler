@@ -1,24 +1,19 @@
 import os
 import re
-import requests
 
 import urllib.request
 import urllib.parse
 import bs4
 from bs4 import BeautifulSoup as bs
 
-from grabber import WikiGrabber
-from cacher import WikiCacher
+from core.grabber import WikiGrabber
+from core.db.cacher import WikiCacher
 
 lang_code = "en"
 base_url = f"https://{lang_code}.wikipedia.org"
 
 
-# TODO: Factor for seeker to use grabber instead. LIkely just means class Seeker(Grabber)
-class WikiSeeker:
-    def __init__(self, grabber):
-        self.grabber = grabber
-
+class WikiSeeker(WikiGrabber):
     def __catlinks(self, page):
         categories = {}
         
@@ -43,7 +38,7 @@ class WikiSeeker:
         search_url = f"{base_url}/wiki/Special:Search?search={urllib.parse.quote(phrase, safe='')}&"
 
         # retrieve search page results - may be disambig, wikipage, or other?
-        results = self.grabber.fetch(search_url)
+        results = self.fetch(search_url)
 
         # handle disambiguation
         categories = self.__catlinks(results)
@@ -54,9 +49,9 @@ class WikiSeeker:
         # retrieve actual results - using retrieve for caching.
         if isinstance(results, list):
             for result in results:
-                yield self.grabber.retrieve(base_url + result, soup=True)
+                yield self.retrieve(base_url + result, soup=True)
         else:
-            yield self.grabber.retrieve(results.url, soup=True)
+            yield self.retrieve(results.url, soup=True)
 
         return
 
@@ -65,8 +60,7 @@ if __name__ == '__main__':
     db_path = os.getcwd() + '/data/databases/seekerwiki.db'
 
     with WikiCacher(db_path) as wc:
-        grabber = WikiGrabber(cacher=wc)
-        seeker = WikiSeeker(grabber)
+        seeker = WikiSeeker(cacher=wc)
 
         for result in seeker.search(input("Wiki search: ")):
             print(result.url)

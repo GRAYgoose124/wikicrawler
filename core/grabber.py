@@ -76,7 +76,7 @@ class WikiGrabber:
             return wiki
 
     # Wikipedia page parsing
-
+    
     def __paragraphs(self, page):
         # rip paragraphs - TODO:get links from paragraph too
         paragraphs = []

@@ -7,6 +7,7 @@ from core.db.cacher import WikiCacher
 from core.sentiment.paragraph import analyze_page, parse_page
 from utils.other import license_str
 
+
 def updatedb(path):
     pages = {}
 
@@ -21,7 +22,6 @@ def updatedb(path):
         # TODO: Store timestamps and update after X interval or after db file modification date.
         for url in urls:            
             page = crawler.retrieve(url)
-            stats = parse_page(page)
 
             pages[page['title']] = page
 
@@ -31,14 +31,11 @@ def updatedb(path):
 
 
 def oneshot(url):
-    # TODO: db has been updated need to change page['stats']
     if WikiGrabber.wiki_regex.match(url):
         with WikiCacher(os.getcwd() + '/data/databases/parasentimentwiki.db') as wc:
             crawler = WikiGrabber(cacher=wc)
 
             page = crawler.retrieve(url)
-            page['stats'] = parse_page(page)
-
             analyze_page(page)
 
         with open('urls.txt', 'a+') as f:
