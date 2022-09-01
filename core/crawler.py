@@ -10,4 +10,5 @@ class WikiCrawler(WikiSeeker):
 
 
 if __name__ == '__main__':
-    crawler = WikiCrawler()
+    with WikiCacher(os.getcwd() + '/data/databases/crawler.db') as wc:
+        crawler = WikiCrawler(cacher=wc)

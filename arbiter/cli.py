@@ -1,13 +1,15 @@
-import argparse
 import os
 
 from core.crawler import WikiCrawler
-from core.db.cacher import WikiCacher
+from core.sentiment.paragraph import analyze_page
+
+from arbiter.oracle import Oracle
 
 
 class WikiPrompt:
     def __init__(self, crawler):
         self.crawler = crawler
+        self.oracle = Oracle(os.getcwd() + "/data/oracle/config.json")
         self.crawl_state = None
 
     def handle_search(self, topic):
@@ -15,7 +17,8 @@ class WikiPrompt:
     
     def handle_url(self, url):
         if WikiCrawler.wiki_regex.match(url):
-            page = crawler.retrieve(url)
+            page = self.crawler.retrieve(url)
+            paragraph_sentiment = analyze_page(page)
         else:
             print("Invalid Wikipedia url.")
 
@@ -28,32 +31,32 @@ class WikiPrompt:
     def handle_about(self, topic):
         pass
 
-    def loop(self):
-        command = ""
+    def start_loop(self):
+        for frame in self.prompt_loop():
+            self.oracle.see(frame)
 
+    def prompt_loop(self):
+
+        command = ""
         while command != "exit":
             command = input("> ")
 
             match command.split():
                 case ['search', *phrase]: 
-                    self.handle_search(" ".join(phrase))
+                    yield self.handle_search(" ".join(phrase))
                 case ['url', url]:
-                    self.handle_url(url)
+                    yield self.handle_url(url)
                 case ['more']:
-                    self.handle_more()
+                    yield self.handle_more()
                 case ['less']:
-                    self.handle_less()
+                    yield self.handle_less()
                 case ['about', *topic]:
-                    self.handle_about(" ".join(topic))
+                    yield self.handle_about(" ".join(topic))
                 case ['exit']:
                     break
                 case _: 
                     print(f"Unknown command: {command}")
 
+        return
 
-if __name__ == '__main__':
-    with WikiCacher(os.getcwd() + '/data/databases/cli.db') as wc:
-        crawler = WikiCrawler(cacher=wc)
-        prompt = WikiPrompt(crawler=crawler)
 
-        prompt.loop()
