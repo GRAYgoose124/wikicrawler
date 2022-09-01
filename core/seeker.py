@@ -49,7 +49,7 @@ class WikiSeeker(WikiGrabber):
             for result in self.__disambiglinks(results).values():
                 yield self.retrieve(base_url + result, soup=soup)
         else:
-            yield self.retrieve(results.url, soup=soup)
+            yield self.retrieve(results.url, page=results, soup=soup)
 
 
 if __name__ == '__main__':

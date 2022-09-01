@@ -55,9 +55,9 @@ class WikiPrompt:
             command = input("> ")
 
             match command.split():
-                case ['search', *phrase]: 
+                case ['s', *phrase]: 
                     self.handle_search(" ".join(phrase))
-                case ['url', url]:
+                case ['u', url]:
                     self.handle_url(url)
                 case ['more']:
                     self.handle_more()

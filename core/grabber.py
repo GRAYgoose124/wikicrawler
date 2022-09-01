@@ -1,13 +1,16 @@
 import os
-from pathlib import Path
+import json
 import urllib.request
 import urllib.parse
 import bs4
 from bs4 import BeautifulSoup as bs
-import json
+from pathlib import Path
 
 import re 
 import threading
+
+from pylatexenc.latexwalker import LatexWalker
+from pylatexenc.latex2text import LatexNodes2Text
 
 from core.db.cacher import WikiCacher
 
@@ -48,11 +51,17 @@ class WikiGrabber:
         page_struct.url = url
         return page_struct
 
-    def retrieve(self, url, soup=False):
+    def retrieve(self, url, page=None, soup=False):
         # TODO: Add optional nodb keyword.
-        page = self.fetch(url)
+
+        if page is None:
+            page = self.fetch(url)
 
         paragraphs, para_links = self.__paragraphs(page)
+
+        # Latex conversion to unicode
+        nl2t = LatexNodes2Text().nodelist_to_text
+        paragraphs = [nl2t(LatexWalker(paragraph).get_latex_nodes()[0]) for paragraph in paragraphs]
 
         media_list = None
         if self.save_media:
