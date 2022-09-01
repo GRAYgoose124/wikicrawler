@@ -16,9 +16,12 @@ base_url = f"https://{lang_code}.wikipedia.org"
 class WikiSeeker(WikiGrabber):
     def __catlinks(self, page):
         categories = {}
-        
-        for link in page.find(id="catlinks", class_="catlinks").find_all('a'):
-            categories[link['title']] = link['href']
+
+        try:        
+            for link in page.find(id="catlinks", class_="catlinks").find_all('a'):
+                categories[link['title']] = link['href']
+        except AttributeError:
+            pass
 
         return categories
 
@@ -34,7 +37,7 @@ class WikiSeeker(WikiGrabber):
 
         return links
 
-    def search(self, phrase):
+    def search(self, phrase, soup=False):
         search_url = f"{base_url}/wiki/Special:Search?search={urllib.parse.quote(phrase, safe='')}&"
 
         # retrieve search page results - may be disambig, wikipage, or other?
@@ -43,17 +46,10 @@ class WikiSeeker(WikiGrabber):
         # handle disambiguation
         categories = self.__catlinks(results)
         if any(["Disambiguation" in cat for cat in categories]):
-            options = list(self.__disambiglinks(results).values())
-            results = options
-
-        # retrieve actual results - using retrieve for caching.
-        if isinstance(results, list):
-            for result in results:
-                yield self.retrieve(base_url + result, soup=True)
+            for result in self.__disambiglinks(results).values():
+                yield self.retrieve(base_url + result, soup=soup)
         else:
-            yield self.retrieve(results.url, soup=True)
-
-        return
+            yield self.retrieve(results.url, soup=soup)
 
 
 if __name__ == '__main__':

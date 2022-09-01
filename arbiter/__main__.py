@@ -12,4 +12,4 @@ if __name__ == '__main__':
         crawler = WikiCrawler(cacher=wc)
         prompt = WikiPrompt(crawler=crawler)
 
-        prompt.start_loop()
+        prompt.loop()
