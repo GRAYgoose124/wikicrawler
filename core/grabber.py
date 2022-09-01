@@ -13,10 +13,7 @@ from pylatexenc.latexwalker import LatexWalker
 from pylatexenc.latex2text import LatexNodes2Text
 
 from core.db.cacher import WikiCacher
-
-# import nltk
-# import tensorflow, numpy, etc
-# import networkx, matplotlib, plotly
+from core.utils.model_to_dict import model_to_dict
 
 
 class WikiGrabber:
@@ -53,6 +50,9 @@ class WikiGrabber:
 
     def retrieve(self, url, page=None, soup=False):
         # TODO: Add optional nodb keyword.
+
+        if url in self.cacher:
+            return model_to_dict(self.cacher.get(url))
 
         if page is None:
             page = self.fetch(url)
@@ -149,7 +149,7 @@ class WikiGrabber:
                 return see_also # Likely just doesn't exist.
 
         for c in sa_soup:
-            if isinstance(c, bs4.element.Tag):
+            if isinstance(c, bs4.element.Tag) and 'title' in c.a:
                 see_also[c.a['title']] = "https://en.wikipedia.org" + c.a['href']
 
         return see_also

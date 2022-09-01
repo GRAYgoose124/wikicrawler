@@ -10,14 +10,14 @@ class WikiPrompt:
     def __init__(self, crawler):
         self.crawler = crawler
         self.oracle = Oracle(os.getcwd() + "/data/oracle/config.json")
-        self.crawl_state = {'page': None}
+        self.crawl_state = {}
 
     def handle_search(self, topic):
         results = list(self.crawler.search(topic, soup=False))
 
         if len(results) > 1:
             for idx, result in enumerate(results):
-                print(f"{idx}: {result.title}")
+                print(f"{idx}: {result['title']}")
             
             try:
                 selected = None
@@ -39,7 +39,6 @@ class WikiPrompt:
         else:
             print("Invalid Wikipedia url.")
         
-
     def handle_more(self):
         pass
 

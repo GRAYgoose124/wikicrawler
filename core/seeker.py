@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup as bs
 from core.grabber import WikiGrabber
 from core.db.cacher import WikiCacher
 
+
 lang_code = "en"
 base_url = f"https://{lang_code}.wikipedia.org"
 
@@ -58,5 +59,5 @@ if __name__ == '__main__':
     with WikiCacher(db_path) as wc:
         seeker = WikiSeeker(cacher=wc)
 
-        for result in seeker.search(input("Wiki search: ")):
-            print(result.url)
+        for result in seeker.search("Star"):
+            print(result['url'])

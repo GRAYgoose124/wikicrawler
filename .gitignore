@@ -9,3 +9,4 @@ plans/*
 *.egg-info/*
 .venv/*
 data/*
+*.prof

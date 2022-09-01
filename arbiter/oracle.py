@@ -4,4 +4,4 @@ class Oracle():
         self.brain = None
 
     def move(self, crawl_state):
-        pass
+        return crawl_state

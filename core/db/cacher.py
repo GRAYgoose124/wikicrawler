@@ -34,6 +34,10 @@ class PageCacher:
         except NoResultFound:
             return False
 
+    def get(self, key):
+        return self.manager.session.query(self.manager.Node).filter(self.manager.Node.url == key).one()
+
+
     def cache(self, page): 
         if self.manager is not None: 
             self.manager.session.merge(self.manager.Node(**page))
