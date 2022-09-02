@@ -13,8 +13,8 @@ import threading
 from pylatexenc.latexwalker import LatexWalker
 from pylatexenc.latex2text import LatexNodes2Text
 
-from core.db.cacher import WikiCacher
-from core.utils.model_to_dict import model_to_dict
+from .db.cacher import WikiCacher
+from .utils.model_to_dict import model_to_dict
 
 
 class WikiGrabber:

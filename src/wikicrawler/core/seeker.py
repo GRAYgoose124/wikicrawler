@@ -7,8 +7,8 @@ import urllib.parse
 import bs4
 from bs4 import BeautifulSoup as bs
 
-from core.grabber import WikiGrabber
-from core.db.cacher import WikiCacher
+from .grabber import WikiGrabber
+from .db.cacher import WikiCacher
 
 
 lang_code = "en"

@@ -1,7 +1,7 @@
 import os
 
-from core.seeker import WikiSeeker
-from core.db.cacher import WikiCacher
+from .seeker import WikiSeeker
+from .db.cacher import WikiCacher
 
 
 class WikiCrawler(WikiSeeker):

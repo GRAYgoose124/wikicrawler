@@ -6,7 +6,9 @@ databases/*
 urls.txt
 *.code-workspace
 plans/*
-*.egg-info/*
+**/*.egg-info/**
 .venv/*
 data/*
 *.prof
+build/*
+dist/*

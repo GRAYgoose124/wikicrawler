@@ -2,11 +2,11 @@ import argparse
 import os
 import json
 
-from core.crawler import WikiCrawler
-from core.db.cacher import WikiCacher
-from core.utils.config import init_config
+from ..core.crawler import WikiCrawler
+from ..core.db.cacher import WikiCacher
+from ..core.utils.config import init_config
 
-from cli import WikiPrompt
+from .cli import WikiPrompt
 
 
 def main():
