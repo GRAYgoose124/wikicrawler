@@ -1,5 +1,3 @@
-import os
-
 from core.crawler import WikiCrawler
 from core.sentiment.paragraph import analyze_page
 
