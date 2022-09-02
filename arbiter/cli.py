@@ -7,33 +7,57 @@ from arbiter.oracle import Oracle
 
 
 class WikiPrompt:
-    def __init__(self, crawler):
-        self.crawler = crawler
-        self.oracle = Oracle(os.getcwd() + "/data/oracle/config.json")
-        self.crawl_state = {}
+    def __init__(self, root_dir, crawler, search_precaching=False):
+        self.search_precaching = search_precaching
 
-    def handle_search(self, topic):
-        results = list(self.crawler.search(topic, soup=False))
+        self.crawler = crawler
+        self.oracle = Oracle(root_dir)
+
+        self.crawl_state = {'user_choice_stack': [], 'page_stack': [], 'pages': {}}
+
+    def handle_search(self, topic, precache=False):
+        result = None
+        results = list(self.crawler.search(topic, soup=False, precache=precache))
 
         if len(results) > 1:
-            for idx, result in enumerate(results):
-                print(f"{idx}: {result['title']}")
+            for idx, res in enumerate(results):
+                if not precache:
+                    print(f"{idx}: {res[0]}")
+                else:
+                    print(f"{idx}: {res['title']}")
             
             try:
                 selected = None
                 while selected is None:
                     selected = int(input("Choose a result: "))
                 
-                analyze_page(results[selected])
+                if not precache:
+                    result = results[selected][1]()
+                else:
+                    result = results[selected]
+
             except ValueError:
                 pass
         else:
-            analyze_page(results[0])
+            result = results[0]
+
+        # compatibility for retrieve/fetch.
+        if isinstance(result, dict):
+            url = result['url']
+        else:
+            url = result.url
+
+        self.crawl_state['pages'][result['title']] = result
+
+        self.crawl_state['user_choice_stack'].append(result['title'])
+        self.crawl_state['page_stack'].append(result['title'])
+
+        analyze_page(result)
 
     def handle_url(self, url):
         if WikiCrawler.wiki_regex.match(url):
             page = self.crawler.retrieve(url)
-            self.crawl_state['page'] = page
+            self.crawl_state['page_stack'].append(page['title'])
 
             analyze_page(page)
         else:
@@ -55,7 +79,7 @@ class WikiPrompt:
 
             match command.split():
                 case ['s', *phrase]: 
-                    self.handle_search(" ".join(phrase))
+                    self.handle_search(" ".join(phrase), precache=self.search_precaching)
                 case ['u', url]:
                     self.handle_url(url)
                 case ['more']:

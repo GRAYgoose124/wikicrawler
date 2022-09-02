@@ -1,5 +1,6 @@
 import os
 import json
+import urllib
 import urllib.request
 import urllib.parse
 import bs4
@@ -21,14 +22,19 @@ class WikiGrabber:
     link_regex = re.compile("^https*://.*\..*")
     header_regex = re.compile('^h[1-6]$')
 
-    def __init__(self, media_folder=None, save_media=True, cacher=None):
+    def __init__(self, root_dir, convert_latex=True, media_folder=None, save_media=True, cacher=None):
         self.cacher = cacher
 
+        self.convert_latex = convert_latex
         self.save_media = save_media
+
         if media_folder is not None:
             self.media_save_location = media_folder
         else:
-            self.media_save_location = os.getcwd() + '/data/images'
+            self.media_save_location = root_dir + '/data/images'
+
+        if not os.path.exists(root_dir):
+            os.makedirs(root_dir)
 
         if self.save_media and not os.path.exists(self.media_save_location):
             os.makedirs(self.media_save_location)
@@ -60,8 +66,9 @@ class WikiGrabber:
         paragraphs, para_links = self.__paragraphs(page)
 
         # Latex conversion to unicode
-        nl2t = LatexNodes2Text().nodelist_to_text
-        paragraphs = [nl2t(LatexWalker(paragraph).get_latex_nodes()[0]) for paragraph in paragraphs]
+        if self.convert_latex:
+            nl2t = LatexNodes2Text().nodelist_to_text
+            paragraphs = [nl2t(LatexWalker(paragraph).get_latex_nodes()[0]) for paragraph in paragraphs]
 
         media_list = None
         if self.save_media:
@@ -75,7 +82,7 @@ class WikiGrabber:
                 'toc_links': self.__page_links(page), 
                 'references': self.__reference_links(page), 
                 'media': media_list}
-
+        
         if self.cacher is not None:
             self.cacher.cache(wiki)
             
@@ -93,13 +100,16 @@ class WikiGrabber:
 
         content_text = page.find(id='mw-content-text')
         body_start = content_text.find(attrs={'class': 'mw-parser-output'})
-        for pa in body_start.find_all('p'):     
-            text = pa.get_text()
-            if text != '' and text != '\n':
-                paragraphs.append(text)
+        try:
+            for pa in body_start.find_all('p'):     
+                text = pa.get_text()
+                if text != '' and text != '\n':
+                    paragraphs.append(text)
 
-            links = {x.text: x['href'] for x in filter(None, [a if a['href'].startswith('/wiki') else None for a in pa.find_all('a')])}
-            paragraph_links.append(links)
+                links = {x.text: x['href'] for x in filter(None, [a if a['href'].startswith('/wiki') else None for a in pa.find_all('a')])}
+                paragraph_links.append(links)
+        except (AttributeError, KeyError):
+            pass
 
         return paragraphs, paragraph_links
 
@@ -172,8 +182,11 @@ class WikiGrabber:
                 save_locs.append(str(save_loc))
 
                 # Download the media with workers. TODO: Handle with asyncio loop to avoid blocking caller.
-                t = threading.Thread(target=lambda: urllib.request.urlretrieve(dl_url, save_loc), daemon=True)
-                t.start()
+                try:
+                    t = threading.Thread(target=lambda: urllib.request.urlretrieve(dl_url, save_loc), daemon=True)
+                    t.start()
+                except urllib.error.HTTPError:
+                    pass
 
         return save_locs
 

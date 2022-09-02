@@ -1,6 +1,7 @@
 import os
 import re
 
+from functools import partial
 import urllib.request
 import urllib.parse
 import bs4
@@ -38,7 +39,7 @@ class WikiSeeker(WikiGrabber):
 
         return links
 
-    def search(self, phrase, soup=False):
+    def search(self, phrase, soup=False, precache=False):
         search_url = f"{base_url}/wiki/Special:Search?search={urllib.parse.quote(phrase, safe='')}&"
 
         # retrieve search page results - may be disambig, wikipage, or other?
@@ -48,7 +49,11 @@ class WikiSeeker(WikiGrabber):
         categories = self.__catlinks(results)
         if any(["Disambiguation" in cat for cat in categories]):
             for result in self.__disambiglinks(results).values():
-                yield self.retrieve(base_url + result, soup=soup)
+                # pass a lambda to avoid pre-caching every result.
+                if not precache:
+                    yield (result, partial(self.retrieve, base_url + result, soup=soup))
+                else:
+                    yield self.retrieve(base_url + result, soup=soup)
         else:
             yield self.retrieve(results.url, page=results, soup=soup)
 
