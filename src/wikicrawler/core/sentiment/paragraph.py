@@ -15,8 +15,6 @@ from rich.console import Console
 from rich.color import Color
 from rich.highlighter import Highlighter
 
-from inputimeout import inputimeout, TimeoutOccurred
-
 
 console = Console()
 

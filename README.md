@@ -3,17 +3,18 @@ The goal of this project is to create a wikipedia crawler which makes finding ne
 
 Currently it has a simple command line interface which you can access through the `arbiter` script installed by pip.
 
-# Build
+# Build & Run
+## 1. Retrieve
     git clone git@github.com:GRAYgoose124/wikicrawler.git
     cd wikicrawler
-## Wheel
+## 2a. Normal
+    pip install .
+## 2b. Wheel
     python -m build . --wheel 
     pip install dist/<output_name>.whl
-## Editable Install
+## 2c. Editable Install
     cd wikicrawler
     pip install -e .
-    
-# Run 
-After installing:
 
+## 3. Run
     arbiter

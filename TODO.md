@@ -1,4 +1,6 @@
-- TODO: Refactor to use asyncio - mostly fixes media blocking issues.
-- TODO: unit testing
+- TODO: Refactor to use asyncio - mostly fixes media blocking issues. (LOW)
 - TODO: Use logging for debugging/unittest purposes
-- TODO: Flit to use cli tools on editable install.
+- TODO: csv, pandas support
+- TODO: seer/markdown tree builder
+- TODO: crawler traversal support
+- TODO: arbiter/oracle state/path caching.

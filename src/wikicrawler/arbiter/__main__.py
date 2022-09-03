@@ -1,12 +1,17 @@
 import argparse
 import os
 import json
+import logging
 
 from ..core.crawler import WikiCrawler
 from ..core.db.cacher import WikiCacher
 from ..core.utils.config import init_config
 
 from .cli import WikiPrompt
+
+
+logging.basicConfig(format='%(name)s:%(lineno)d::%(levelname)s> %(message)s', level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 def main():
@@ -21,8 +26,10 @@ def main():
 
         prompt = WikiPrompt(config['data_root'], crawler, search_precaching=config['search_precaching'])
 
+        logger.info("Arbiter started, enjoy your tumble.")
         prompt.loop()
 
 
 if __name__ == '__main__':
+    
     main()

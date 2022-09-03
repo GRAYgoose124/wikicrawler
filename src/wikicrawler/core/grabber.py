@@ -3,9 +3,11 @@ import json
 import urllib
 import urllib.request
 import urllib.parse
+import logging
 import bs4
 from bs4 import BeautifulSoup as bs
 from pathlib import Path
+from time import sleep
 
 import re 
 import threading
@@ -15,6 +17,9 @@ from pylatexenc.latex2text import LatexNodes2Text
 
 from .db.cacher import WikiCacher
 from .utils.model_to_dict import model_to_dict
+
+
+logger = logging.getLogger(__name__)
 
 
 class WikiGrabber:
@@ -44,9 +49,13 @@ class WikiGrabber:
 
         page = None
         if re.search("wikipedia.org", parsed_url.netloc):
-            response = urllib.request.urlopen(url)
-            url = response.geturl()
-            page = response.read().decode("utf-8")
+            try:
+                response = urllib.request.urlopen(url)
+                url = response.geturl()
+                page = response.read().decode("utf-8")
+            except urllib.error.HTTPError:
+                logger.exception(url)
+                sleep(1)
         else:
             raise ValueError(url)
     
@@ -186,7 +195,8 @@ class WikiGrabber:
                     t = threading.Thread(target=lambda: urllib.request.urlretrieve(dl_url, save_loc), daemon=True)
                     t.start()
                 except urllib.error.HTTPError:
-                    pass
+                    logger.exception(f"Failed to download media from {dl_url}")
+                    sleep(1)
 
         return save_locs
 
