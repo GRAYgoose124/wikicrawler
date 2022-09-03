@@ -1,3 +1,15 @@
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = 'wikicrawler'
+version = '0.0.2'
+
+dependencies = [
+    "sqlalchemy >= 1.4",
+    "bs4 >= 0.0.1",
+    "nltk >= 3.7",
+    "rich >= 12.5",
+    "pylatexenc >= 2.1"
+]
