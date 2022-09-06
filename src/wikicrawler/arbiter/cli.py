@@ -51,41 +51,34 @@ class WikiPrompt:
         # TODO: cache oracle/crawl_states/paths maybe add crawl_state to oracle.
         self.crawl_state = {'user_choice_stack': [], 'page_stack': [], 'pages': {}, 'last_search': None}
 
-    def handle_search(self, topic, precache=False):
-        results = list(self.crawler.search(topic, soup=False, precache=precache))
+    def analyze_page_wrapper(self, page):
+        page['freq'], page['colloc'] = analyze_page(page)
+        self.crawl_state['pages'][page['title']] = page
+        self.crawl_state['page_stack'].append(page['title'])
+
+        return page['freq'], page['colloc']
+
+    def handle_search(self, topic):
+        results = list(self.crawler.search(topic, soup=False, precache=self.search_precaching))
 
         if len(results) > 1:
-            print_results(results, precache)
+            print_results(results, self.search_precaching)
 
-        result = select_result(results, precache)
+        page = select_result(results, self.search_precaching)
 
-        # compatibility for retrieve/fetch.
-        try:
-            if isinstance(result, dict):
-                url = result['url']
-            else:
-                url = result.url
-        except (KeyError, AttributeError):
-            logger.exception(result)
-            return
-
-        self.crawl_state['pages'][result['title']] = result
-
-        self.crawl_state['user_choice_stack'].append(result['title'])
-        self.crawl_state['page_stack'].append(result['title'])
+        self.analyze_page_wrapper(page)
+        self.crawl_state['user_choice_stack'].append(page['title'])
 
         if len(results) > 1:
             self.crawl_state['last_search'] = results
-            
-        analyze_page(result)
+        else:
+            self.crawl_state['last_search'] = [page]
 
     def handle_url(self, url):
         if WikiCrawler.wiki_regex.match(url):
             page = self.crawler.retrieve(url)
-            self.crawl_state['pages'][result['title']] = page
-            self.crawl_state['page_stack'].append(page['title'])
 
-            analyze_page(page)
+            self.analyze_page_wrapper(page)
         else:
             print("Invalid Wikipedia url.")
         
@@ -102,18 +95,32 @@ class WikiPrompt:
         if self.crawl_state['last_search'] is not None:
             print_results(self.crawl_state['last_search'], self.search_precaching)
     
-    def handle_select(self, idx, precache=False):
+    def handle_state(self, subcmd):
         try:
-            result = select_result(self.crawl_state['last_search'], precache, int(idx))
+            match subcmd:
+                case ['get', idx]:
+                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][int(idx)]]
+                    print(state)
 
-            self.crawl_state['pages'][result['title']] = result
+                case ['list']:
+                    print_results(self.crawl_state['pages'].keys(), False)
 
-            self.crawl_state['user_choice_stack'].append(result['title'])
-            self.crawl_state['page_stack'].append(result['title'])
+                case ['res']:
+                    print_results(self.crawl_state['last_search'], self.search_precaching)
 
-            analyze_page(result)
-        except ValueError:
+                case ['sel', idx]:
+                    page = select_result(self.crawl_state['last_search'], self.search_precaching, int(idx))
+
+                    self.analyze_page_wrapper(page)
+                    self.crawl_state['user_choice_stack'].append(page['title'])
+               
+                case _:
+                    pass
+        except (ValueError, IndexError):
             pass
+
+    def handle_divine(self):
+        self.crawl_state = self.oracle.move(self.crawl_state)
 
     def loop(self):
         command = ""
@@ -122,7 +129,7 @@ class WikiPrompt:
 
             match command.split():
                 case ['s', *phrase]: 
-                    self.handle_search(" ".join(phrase), precache=self.search_precaching)
+                    self.handle_search(" ".join(phrase))
                 case ['u', url]:
                     self.handle_url(url)
 
@@ -133,10 +140,11 @@ class WikiPrompt:
                 case ['about', *topic]:
                     self.handle_about(" ".join(topic))
 
-                case ['res']:
-                    self.handle_result()
-                case ['sel', idx]:
-                    self.handle_select(idx, precache=self.search_precaching)
+                case ['st', *subcmd]:
+                    self.handle_state(subcmd)
+
+                case ['div']:
+                    self.handle_divine()
 
                 case ['cstate']:
                     print(self.crawl_state)
@@ -145,8 +153,3 @@ class WikiPrompt:
                     break
                 case _: 
                     print(f"Unknown command: {command}")
-
-            self.crawl_state = self.oracle.move(self.crawl_state)
-
-
-

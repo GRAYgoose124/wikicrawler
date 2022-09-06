@@ -25,16 +25,34 @@ fillerwords = ['at', 'their', 'been', 'which', 'on',
                 'or', 'not', 'by', 'be', 'it', "'s", 'i', 'for', 
                 'with', 'an', 'has', 'have', 'some', 'were', 'but', 
                 'this', 'its', 'such', 'who', 'his', 'her']
+
+                
 blacklist = ['!', "'", ':', '_', '\\', ',', '.', '(', ')', '{', '}', '``', "''", "[", "]"] + fillerwords
 
 
-def print_sentiment(sentences):
+def get_sentiments(sentences):
     sia = SentimentIntensityAnalyzer()
 
-    # avg_score = { 'neg': 0, 'neu': 0, 'pos': 0, 'compound': 0 }
+    sscores = []
+    wscores = []
     for sent in sentences:
+        sent_score = sia.polarity_scores(sent)
 
-        score = sia.polarity_scores(sent)
+        for word in nltk.word_tokenize(sent):
+            word_score = sia.polarity_scores(word)
+
+            wscores.append((word, word_score))
+
+        sscores.append(sent_score)
+
+    return sscores, wscores
+
+
+def print_sentiment(sentences):
+    sscores, wscores = get_sentiments(sentences)
+
+    # avg_score = { 'neg': 0, 'neu': 0, 'pos': 0, 'compound': 0 }
+    for sent, score in zip(sentences, sscores):
         # avg_score =  { 'neg': (avg_score['neg'] + score['neg']) * 0.5, 
         #                'neu': (avg_score['neu'] + score['neu']) * 0.5, 
         #                'pos': (avg_score['pos'] + score['pos']) * 0.5, 
@@ -45,12 +63,13 @@ def print_sentiment(sentences):
         b = int(255*(score['neu']))
         c = int(127*(1+score['compound']))
 
-        for word in nltk.word_tokenize(sent):
-            score = sia.polarity_scores(word)
-            x = int(0.5*(c+int(127*(1+score['compound']))))
-            console.print(word, sep=" ", end=" ", style=f"rgb({int(0.5 * (r + 255*(score['neg'])))},{int(0.5 * (g + 255*(score['pos'])))},{int(0.5 * (b + 255*(score['neu'])))}) on rgb({x},{x},{x})", highlight=False)
-        
-        # console.print(sent, style=f"rgb(r,g,b) on rgb({c},{c},{c})",)
+        for word, wscore in wscores:
+            r2 = int(0.33*(r+2.0*int(255*(wscore['neg']))))
+            g2 = int(0.33*(g+2.0*int(255*(wscore['pos']))))
+            b2 = int(0.33*(b+2.0*int(255*(wscore['neu']))))
+            c2 = int(0.33*(c+2.0*int(127*(1+wscore['compound']))))
+
+            console.print(word, sep=" ", end=" ", style=f"rgb({r2},{g2},{b2}) on rgb({c2},{c2},{c2})", highlight=False)
     print()
 
 
@@ -85,7 +104,11 @@ def parse_page(page, level):
 
 
 def analyze_page(page, level=2):
-    body, sentences, words, word_freq, collocs = parse_page(page, level)
+    # todo: clean up use cases
+    if not isinstance(page, tuple):
+        body, sentences, words, word_freq, collocs = parse_page(page, level)
+    else:
+        body, sentences, words, word_freq, collocs = page
 
     console.print(f"{'-'*80}\n[bold yellow]{page['title']} - {page['url']}[/bold yellow]")
 
@@ -99,6 +122,8 @@ def analyze_page(page, level=2):
 
     print("\t[bold red]Last 5:[/bold red]")
     print_sentiment(sentences[-5:])
+
+    return word_freq, collocs
 
 
 def analyze_pages(pages):

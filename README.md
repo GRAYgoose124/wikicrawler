@@ -11,6 +11,7 @@ Currently it has a simple command line interface which you can access through th
 ### 2a. Normal
     pip install .
 ### 2b. Wheel
+    pip install build
     python -m build . --wheel 
     pip install dist/<output_name>.whl
 ### 2c. Editable Install
