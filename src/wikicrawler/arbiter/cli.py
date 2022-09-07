@@ -43,7 +43,7 @@ class WikiPrompt:
         if len(results) > 1:
             self.crawl_state['last_search'] = results
         else:
-            self.crawl_state['last_search'] = [page]
+            self.crawl_state['last_search'] = [results]
 
     def handle_url(self, url):
         if WikiCrawler.wiki_regex.match(url):
@@ -70,12 +70,13 @@ class WikiPrompt:
                     print_results(state['colloc'], True)
 
                 case ['sim_colloc', idx, *phrase]:
+                    phrase = " ".join(phrase)
+
                     state = self.crawl_state['pages'][self.crawl_state['page_stack'][int(idx)]]
 
                     most_similar = (0.0, None)
                     for colloc in state['colloc']:
                         colloc = " ".join(colloc)
-                        phrase = " ".join(phrase)
                         similarity = jaro_winkler_similarity(colloc, phrase) 
                         # logging.debug(f"{colloc} == {phrase}: {similarity}")
 
@@ -107,12 +108,7 @@ class WikiPrompt:
             logging.exception("Handle_state choice error.", exc_info=e)
 
     def handle_divine(self, jump_phrase):
-        self.oracle.move(jump_phrase)
-
-    def handle_similarity_jump(self, subcmd):
-        match subcmd:
-            case _:
-                pass
+        self.oracle.colloc_jump(jump_phrase)
 
     def loop(self):
         command = ""
@@ -142,9 +138,6 @@ class WikiPrompt:
 
             case ['div', *jump_phrase]:
                 self.handle_divine(" ".join(jump_phrase))
-
-            case ['tsym']:
-                self.handle_similarity_jump()
 
             case ['pointer']:
                 print(self.pointer)

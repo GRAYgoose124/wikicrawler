@@ -12,8 +12,11 @@ class Oracle():
         self.oracle_path = oracle_path
         self.brain = None
 
-    def move(self, jump_phrase):
-        self.prompt.parse_cmd(f'st sim_colloc 0 {jump_phrase}')
-        self.prompt.parse_cmd(f"s {self.prompt.pointer['most_similar_colloc']}")
-        self.prompt.parse_cmd(f'st sel 0')
+    def colloc_jump(self, jump_phrase):
+        cmd = self.prompt.parse_cmd
+
+        cmd(f'st sim_colloc 0 {jump_phrase}')
+        cmd(f"s {self.prompt.pointer['most_similar_colloc']}")
+        cmd(f'st sel 0')
+
         # self.prompt.crawl_state
