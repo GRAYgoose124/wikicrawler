@@ -168,7 +168,7 @@ class WikiGrabber:
                 return see_also # Likely just doesn't exist.
 
         for c in sa_soup:
-            if isinstance(c, bs4.element.Tag) and 'title' in c.a:
+            if isinstance(c, bs4.element.Tag) and c.a is not None and 'title' in c.a:
                 see_also[c.a['title']] = "https://en.wikipedia.org" + c.a['href']
 
         return see_also
