@@ -1,0 +1,12 @@
+help_msg = ["\ts <topic> - search for a topic",
+            "\tu <url> - retrieve a page from a url\n",
+            "\tmore - get more information about the current page",
+            "\tless - get less information about the current page",
+            "\tabout <topic> - get information about a topic\n",
+            "\tst get <idx> - get a page from the crawl state",
+            "\tst list - list the pages in the crawl state",
+            "\tst res - list the last search results",
+            "\tst sel <idx> - select a page from the last search results\n",
+            "\tdiv - divine the next page to crawl",
+            "\tcstate - print the current crawl state\n",
+            "\thelp - print this help message"]

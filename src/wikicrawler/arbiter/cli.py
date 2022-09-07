@@ -1,56 +1,35 @@
 import logging
+import readline
+import nltk
+from nltk.corpus import wordnet as wn
+from nltk.metrics.distance import jaro_winkler_similarity
 
 from ..core.crawler import WikiCrawler
 from ..core.sentiment.paragraph import analyze_page
 
 from .oracle import Oracle
+from .utils.other import help_msg
+from .utils.search import print_results, select_result
 
 
 logger = logging.getLogger(__name__)
 
 
-def print_results(results, precache):
-    for idx, res in enumerate(results):
-        if not precache:
-            print(f"{idx}: {res[0]}")
-        else:
-            print(f"{idx}: {res['title']}")
-
-
-def select_result(results, precache, index=None):
-    if len(results) > 1:
-        try:
-            if index is None:
-                selected = None
-                while selected is None:
-                    selected = int(input("Choose a result: "))
-            else:
-                selected = index
-
-            if not precache:
-                result = results[selected][1]()
-            else:
-                result = results[selected]
-
-
-        except ValueError as e:
-            pass
-    else:
-        result = results[0]
-
-    return result
-
-
 class WikiPrompt:
     def __init__(self, root_dir, crawler, search_precaching=False):
+        # TODO: move to app setup
+        nltk.download('wordnet')
+        nltk.download('omw-1.4')
+
         self.search_precaching = search_precaching
 
         self.crawler = crawler
-        self.oracle = Oracle(root_dir)
+        self.oracle = Oracle(root_dir, self)
 
         # TODO: cache oracle/crawl_states/paths maybe add crawl_state to oracle.
         self.crawl_state = {'user_choice_stack': [], 'page_stack': [], 'pages': {}, 'last_search': None}
-
+        self.pointer = { 'most_similar_colloc': None}
+        
     def analyze_page_wrapper(self, page):
         page['freq'], page['colloc'] = analyze_page(page)
         self.crawl_state['pages'][page['title']] = page
@@ -58,16 +37,22 @@ class WikiPrompt:
 
         return page['freq'], page['colloc']
 
-    def handle_search(self, topic):
+    def handle_search(self, topic, select_index=None):
         results = list(self.crawler.search(topic, soup=False, precache=self.search_precaching))
 
         if len(results) > 1:
             print_results(results, self.search_precaching)
 
-        page = select_result(results, self.search_precaching)
+        if select_index is not None:
+            page = select_result(results, self.search_precaching, index=select_index)
+        else:
+            page = select_result(results, self.search_precaching)
 
         self.analyze_page_wrapper(page)
-        self.crawl_state['user_choice_stack'].append(page['title'])
+
+        # select_index is used for non-interactive search
+        if select_index is None:
+            self.crawl_state['user_choice_stack'].append(page['title'])
 
         if len(results) > 1:
             self.crawl_state['last_search'] = results
@@ -90,20 +75,36 @@ class WikiPrompt:
 
     def handle_about(self, topic):
         pass
-    
-    def handle_result(self):
-        if self.crawl_state['last_search'] is not None:
-            print_results(self.crawl_state['last_search'], self.search_precaching)
-    
+
     def handle_state(self, subcmd):
         try:
             match subcmd:
+                case ['get_colloc', idx]:
+                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][int(idx)]]
+                    print_results(state['colloc'], True)
+
+                case ['sim_colloc', idx, *phrase]:
+                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][int(idx)]]
+
+                    most_similar = (0.0, None)
+                    for colloc in state['colloc']:
+                        colloc = " ".join(colloc)
+                        phrase = " ".join(phrase)
+                        similarity = jaro_winkler_similarity(colloc, phrase) 
+                        # logging.debug(f"{colloc} == {phrase}: {similarity}")
+
+                        if similarity > most_similar[0]:
+                            most_similar = (similarity, colloc)
+
+                    self.pointer['most_similar_colloc'] = most_similar[1]
+                    print(f"Most similar collocation: {most_similar[1]}")
+
                 case ['get', idx]:
                     state = self.crawl_state['pages'][self.crawl_state['page_stack'][int(idx)]]
-                    print(state)
+                    self.analyze_page_wrapper(state)
 
                 case ['list']:
-                    print_results(self.crawl_state['pages'].keys(), False)
+                    print_results(self.crawl_state['pages'].keys(), True)
 
                 case ['res']:
                     print_results(self.crawl_state['last_search'], self.search_precaching)
@@ -116,40 +117,54 @@ class WikiPrompt:
                
                 case _:
                     pass
-        except (ValueError, IndexError):
-            pass
+        except (ValueError, IndexError) as e:
+            logging.exception("Handle_state choice error.", exc_info=e)
 
-    def handle_divine(self):
-        self.crawl_state = self.oracle.move(self.crawl_state)
+    def handle_divine(self, jump_phrase):
+        self.oracle.move(jump_phrase)
+
+    def handle_similarity_jump(self, subcmd):
+        match subcmd:
+            case _:
+                pass
 
     def loop(self):
         command = ""
+
         while command != "exit":
             command = input("> ")
+            
+            self.parse_cmd(command)
+  
+    def parse_cmd(self, command):
+        match command.split():
+            case ['s', *phrase]: 
+                self.handle_search(" ".join(phrase))
+            case ['u', url]:
+                self.handle_url(url)
 
-            match command.split():
-                case ['s', *phrase]: 
-                    self.handle_search(" ".join(phrase))
-                case ['u', url]:
-                    self.handle_url(url)
+            case ['more']:
+                self.handle_more()
+            case ['less']:
+                self.handle_less()
+            case ['about', *topic]:
+                self.handle_about(" ".join(topic))
 
-                case ['more']:
-                    self.handle_more()
-                case ['less']:
-                    self.handle_less()
-                case ['about', *topic]:
-                    self.handle_about(" ".join(topic))
+            case ['st', *subcmd]:
+                self.handle_state(subcmd)
 
-                case ['st', *subcmd]:
-                    self.handle_state(subcmd)
+            case ['div', *jump_phrase]:
+                self.handle_divine(" ".join(jump_phrase))
 
-                case ['div']:
-                    self.handle_divine()
+            case ['tsym']:
+                self.handle_similarity_jump()
 
-                case ['cstate']:
-                    print(self.crawl_state)
+            case ['pointer']:
+                print(self.pointer)
 
-                case ['exit']:
-                    break
-                case _: 
-                    print(f"Unknown command: {command}")
+            case ['help']:
+                print(*help_msg, sep='\n')
+            case ['exit']:
+                pass
+            case _: 
+                print(f"Unknown command: {command}")

@@ -2,7 +2,8 @@ import os
 
 
 class Oracle():
-    def __init__(self, root_dir):
+    def __init__(self, root_dir, prompt):
+        self.prompt = prompt
         oracle_path = root_dir + "/oracle"
 
         if not os.path.exists(oracle_path):
@@ -11,5 +12,8 @@ class Oracle():
         self.oracle_path = oracle_path
         self.brain = None
 
-    def move(self, crawl_state):
-        return crawl_state
+    def move(self, jump_phrase):
+        self.prompt.parse_cmd(f'st sim_colloc 0 {jump_phrase}')
+        self.prompt.handle_search(self.prompt.pointer['most_similar_colloc'], select_index=0)
+
+        # self.prompt.crawl_state
