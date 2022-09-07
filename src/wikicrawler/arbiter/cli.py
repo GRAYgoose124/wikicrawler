@@ -1,3 +1,5 @@
+from io import TextIOWrapper
+import os
 import logging
 import readline
 import nltk
@@ -53,15 +55,6 @@ class WikiPrompt:
         else:
             print("Invalid Wikipedia url.")
         
-    def handle_more(self):
-        pass
-
-    def handle_less(self):
-        pass
-
-    def handle_about(self, topic):
-        pass
-
     def handle_state(self, subcmd):
         try:
             match subcmd:
@@ -107,17 +100,11 @@ class WikiPrompt:
         except (ValueError, IndexError) as e:
             logging.exception("Handle_state choice error.", exc_info=e)
 
-    def handle_divine(self, jump_phrase):
-        self.oracle.colloc_jump(jump_phrase)
+    def handle_colloc_move(self, jump_phrase):
+        self.run_script(f"st sim_colloc 0 {jump_phrase}",
+                        f"s {self.pointer['most_similar_colloc']}",
+                         "st sel 0")
 
-    def loop(self):
-        command = ""
-
-        while command != "exit":
-            command = input("> ")
-            
-            self.parse_cmd(command)
-  
     def parse_cmd(self, command):
         match command.split():
             case ['s', *phrase]: 
@@ -126,18 +113,11 @@ class WikiPrompt:
             case ['u', url]:
                 self.handle_url(url)
 
-            case ['more']:
-                self.handle_more()
-            case ['less']:
-                self.handle_less()
-            case ['about', *topic]:
-                self.handle_about(" ".join(topic))
-
             case ['st', *subcmd]:
                 self.handle_state(subcmd)
 
-            case ['div', *jump_phrase]:
-                self.handle_divine(" ".join(jump_phrase))
+            case ['cmov', *jump_phrase]:
+                self.handle_colloc_move(" ".join(jump_phrase))
 
             case ['pointer']:
                 print(self.pointer)
@@ -146,5 +126,37 @@ class WikiPrompt:
                 print(*help_msg, sep='\n')
             case ['exit']:
                 pass
+
             case _: 
                 print(f"Unknown command: {command}")
+
+    def loop(self):
+        command = ""
+
+        while command != "exit":
+            command = input("> ")
+            
+            self.parse_cmd(command)
+
+    def run_script(self, *script_or_path):
+        if len(script_or_path) == 1:
+            script_or_path = script_or_path[0]
+            # check for script at path
+            if os.path.exists(script_or_path):
+                with open(script_or_path, 'r') as script:
+                    for command in script:
+                        self.parse_cmd(command)
+            # see if it's just a file object
+            elif isinstance(script_or_path, TextIOWrapper):
+                for command in script_or_path:
+                    self.parse_cmd(command)
+            # or try to split the string by \n
+            elif '\n' in script_or_path:
+                for command in script_or_path.split('\n'):
+                    self.parse_cmd(command)
+        # otherwise check if it's a list of commands
+        elif (isinstance(script_or_path, tuple)
+         and len(script_or_path) > 1
+         and isinstance(script_or_path[0], str)):
+            for command in script_or_path:
+                self.parse_cmd(command)

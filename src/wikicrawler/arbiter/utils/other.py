@@ -7,6 +7,5 @@ help_msg = ["\ts <topic> - search for a topic",
             "\tst list - list the pages in the crawl state",
             "\tst res - list the last search results",
             "\tst sel <idx> - select a page from the last search results\n",
-            "\tdiv - divine the next page to crawl",
-            "\tcstate - print the current crawl state\n",
+            "\tdiv - divine the next page to crawl\n",
             "\thelp - print this help message"]

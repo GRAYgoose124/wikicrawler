@@ -12,11 +12,4 @@ class Oracle():
         self.oracle_path = oracle_path
         self.brain = None
 
-    def colloc_jump(self, jump_phrase):
-        cmd = self.prompt.parse_cmd
-
-        cmd(f'st sim_colloc 0 {jump_phrase}')
-        cmd(f"s {self.prompt.pointer['most_similar_colloc']}")
-        cmd(f'st sel 0')
-
-        # self.prompt.crawl_state
+    # TODO: Oracle should compile a summarization of the crawl and user input.
