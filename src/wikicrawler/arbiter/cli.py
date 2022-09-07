@@ -37,22 +37,8 @@ class WikiPrompt:
 
         return page['freq'], page['colloc']
 
-    def handle_search(self, topic, select_index=None):
+    def handle_search(self, topic):
         results = list(self.crawler.search(topic, soup=False, precache=self.search_precaching))
-
-        if len(results) > 1:
-            print_results(results, self.search_precaching)
-
-        if select_index is not None:
-            page = select_result(results, self.search_precaching, index=select_index)
-        else:
-            page = select_result(results, self.search_precaching)
-
-        self.analyze_page_wrapper(page)
-
-        # select_index is used for non-interactive search
-        if select_index is None:
-            self.crawl_state['user_choice_stack'].append(page['title'])
 
         if len(results) > 1:
             self.crawl_state['last_search'] = results
@@ -140,6 +126,7 @@ class WikiPrompt:
         match command.split():
             case ['s', *phrase]: 
                 self.handle_search(" ".join(phrase))
+
             case ['u', url]:
                 self.handle_url(url)
 

@@ -14,6 +14,6 @@ class Oracle():
 
     def move(self, jump_phrase):
         self.prompt.parse_cmd(f'st sim_colloc 0 {jump_phrase}')
-        self.prompt.handle_search(self.prompt.pointer['most_similar_colloc'], select_index=0)
-
+        self.prompt.parse_cmd(f"s {self.prompt.pointer['most_similar_colloc']}")
+        self.prompt.parse_cmd(f'st sel 0')
         # self.prompt.crawl_state
