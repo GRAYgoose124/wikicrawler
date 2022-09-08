@@ -94,7 +94,8 @@ class WikiGrabber:
         
         if self.cacher is not None:
             self.cacher.cache(wiki)
-            
+        
+        # TODO: Remove frayed logic.
         if soup:
             return page
         else:
@@ -160,8 +161,11 @@ class WikiGrabber:
         see_also = {}
 
         content_text = page.find(id='mw-content-text')
-        sa_soup = content_text.select('.div-col')[0]
-  
+        try:
+            sa_soup = content_text.select('.div-col')[0]
+        except IndexError:
+            return see_also
+
         for a in sa_soup.find_all('a'):
             if a['href'].startswith('/wiki'):
                 see_also[a['title']] = "https://en.wikipedia.org" + a['href']

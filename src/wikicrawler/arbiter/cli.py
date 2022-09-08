@@ -17,7 +17,59 @@ from .utils.search import print_results, select_result
 logger = logging.getLogger(__name__)
 
 
-class WikiPrompt:
+# TODO: Metaclass which defines match statement basd on method tree.
+class WikiScriptEngine:
+    def __init__(self):
+        self.functions = {}
+
+    def cmd_func_init(self, name):
+        function = []
+        line = None
+        while True:
+            line = input(">>> ")
+            if line == 'end':
+                break
+
+            function.append(line)
+            
+        self.functions[name] = function
+    
+    def parse_cmd(self, command):
+        raise NotImplementedError("This method must be implemented by a subclass.")
+
+    def loop(self):
+        command = ""
+
+        while command != "exit":
+            command = input("> ")
+            
+            self.parse_cmd(command)
+
+    def run_script(self, *script_or_path):
+        if len(script_or_path) == 1:
+            script_or_path = script_or_path[0]
+            # check for script at path
+            if os.path.exists(script_or_path):
+                with open(script_or_path, 'r') as script:
+                    for command in script:
+                        self.parse_cmd(command)
+            # see if it's just a file object
+            elif isinstance(script_or_path, TextIOWrapper):
+                for command in script_or_path:
+                    self.parse_cmd(command)
+            # or try to split the string by \n
+            elif '\n' in script_or_path:
+                for command in script_or_path.split('\n'):
+                    self.parse_cmd(command)
+        # otherwise check if it's a list of commands
+        elif (isinstance(script_or_path, tuple)
+         and len(script_or_path) > 1
+         and isinstance(script_or_path[0], str)):
+            for command in script_or_path:
+                self.parse_cmd(command)
+
+
+class WikiPrompt(WikiScriptEngine):
     def __init__(self, root_dir, crawler, search_precaching=False):
         # TODO: move to app setup
         nltk.download('wordnet')
@@ -38,6 +90,7 @@ class WikiPrompt:
 
         return page['freq'], page['colloc']
 
+    # TODO: Fixed frayed logic, printing should be separate. use parse_page instead.
     def analyze_page_wrapper(self, page, printing=True):
         page['freq'], page['colloc'] = analyze_page(page, printing=printing)
         return self.page_wrapper(page)
@@ -57,38 +110,59 @@ class WikiPrompt:
             self.analyze_page_wrapper(page)
         else:
             print("Invalid Wikipedia url.")
+    
+    def conditional_idx_selector(self, idx):
+        # Redundant condition with select_result. TODO: Clean up frayed logic paths. Refactor to fully cover.
+        # TODO: generalize better. lol. self.pointer['selection']
+        if len(idx) >= 1:
+            try:
+                page = select_result(self.crawl_state['last_search'], self.search_precaching, int(idx[0]))
+            except ValueError:
+                page = select_result(self.crawl_state['last_search'], self.search_precaching)
+        else:
+            page = select_result(self.crawl_state['last_search'], self.search_precaching, -1)
         
+        return page
+
     def handle_state(self, subcmd):
         try:
+            state = self.crawl_state['pages'][self.crawl_state['page_stack'][-1]]
+        except IndexError:
+            state = None
+
+        try:
             match subcmd:
-                case ['get_colloc']:
-                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][-1]]
-                    print_results(state['colloc'], True)
+                case ['colloc', *phrase]:
+                    if len(phrase) == 0:
+                        print_results(state['colloc'], True)
+                    else:
+                        phrase = " ".join(phrase)
 
-                case ['sim_colloc', *phrase]:
-                    phrase = " ".join(phrase)
+                        most_similar = (0.0, None)
+                        for colloc in state['colloc']:
+                            colloc = " ".join(colloc)
+                            similarity = jaro_winkler_similarity(colloc, phrase) 
+                            # logging.debug(f"{colloc} == {phrase}: {similarity}")
 
-                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][-1]]
+                            if similarity > most_similar[0]:
+                                most_similar = (similarity, colloc)
 
-                    most_similar = (0.0, None)
-                    for colloc in state['colloc']:
-                        colloc = " ".join(colloc)
-                        similarity = jaro_winkler_similarity(colloc, phrase) 
-                        # logging.debug(f"{colloc} == {phrase}: {similarity}")
+                        self.pointer['most_similar_colloc'] = most_similar[1]
+                        print(f"Most similar collocation: {most_similar[1]}")
 
-                        if similarity > most_similar[0]:
-                            most_similar = (similarity, colloc)
+                case ['sa', *idx]:
+                    try:
+                        idx = int(idx[0])
+                        selection = list(state['see_also'].values())[idx]
 
-                    self.pointer['most_similar_colloc'] = most_similar[1]
-                    print(f"Most similar collocation: {most_similar[1]}")
+                        page = self.crawler.retrieve(selection)
+                        self.analyze_page_wrapper(page)
 
-                case ['seealso']:
-                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][-1]]
-                    print(state['see_also'])
-                    print_results(state['see_also'].keys(), True)
+                    except (ValueError, TypeError) as e:
+                        logging.exception("Issue with see also page analysis, just an index error?", exc_info=e)
+                        print_results(state['see_also'].keys(), True)
 
                 case ['links', *idx]:
-                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][-1]]
                     if len(idx) == 1:
                         try:
                             idx = int(idx[0])
@@ -100,7 +174,6 @@ class WikiPrompt:
                             print(f"---/t{idx}/t---")
                             print_results([f"\t{key}" for key in para.keys()], True)
                 case ['getlink', pgidx, idx]:
-                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][-1]]
                     try:
                         pgidx = int(pgidx)
                         idx = int(idx)
@@ -110,27 +183,29 @@ class WikiPrompt:
                     except ValueError:
                         print("Invalid indices to paragraph link.")
 
-                case ['list']:
-                    print_results(self.crawl_state['pages'].keys(), True)
-                case ['get', idx]:
-                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][int(idx)]]
-                    self.analyze_page_wrapper(state)
-
-                case ['res']:
-                    print_results(self.crawl_state['last_search'], self.search_precaching)
-                case ['sel', *idx]:
-                    if len(self.crawl_state['last_search']) == 1:
-                        page = self.crawl_state['last_search'][0]
-                    elif len(idx) >= 1:
-                        try:
-                            page = select_result(self.crawl_state['last_search'], self.search_precaching, int(idx[0]))
-                        except ValueError:
-                            page = select_result(self.crawl_state['last_search'], self.search_precaching)
+                case ['list', *idx]:
+                    if len(idx) == 0:
+                        print_results(self.crawl_state['pages'].keys(), True)
                     else:
-                        page = select_result(self.crawl_state['last_search'], self.search_precaching, -1)
+                        try:
+                            idx = int(idx[0])
+                            state = self.crawl_state['pages'][self.crawl_state['page_stack'][idx]]
+                            self.analyze_page_wrapper(state)
+                        except ValueError:
+                            pass
+                        
+                case ['res', *idx]:
+                    if len(idx) == 0:
+                        print_results(self.crawl_state['last_search'], self.search_precaching)
+                    else:
+                        if len(self.crawl_state['last_search']) == 1:
+                            page = self.crawl_state['last_search'][0]
+                        # Redundant condition with select_result. TODO: Clean up frayed logic paths.
+                        elif len(idx) >= 1:
+                            page = self.conditional_idx_selector(idx)
 
-                    self.analyze_page_wrapper(page)
-                    self.crawl_state['user_choice_stack'].append(page['title'])
+                        self.analyze_page_wrapper(page)
+                        self.crawl_state['user_choice_stack'].append(page['title'])
 
                 case ['pop']:
                     self.pointer['selection'] = self.crawl_state['page_stack'].pop()
@@ -149,14 +224,11 @@ class WikiPrompt:
             logging.exception("Handle_state choice error.", exc_info=e)
 
     def handle_colloc_move(self, jump_phrase):
-        self.run_script(f"st sim_colloc {jump_phrase}",
+        self.run_script(f"st colloc {jump_phrase}",
                         f"s {self.pointer['most_similar_colloc']}",
                          "st sel 0")
 
     def handle_freq_move(self, jump_phrase):
-        pass
-
-    def handle_write_func(self, name):
         pass
 
     def parse_cmd(self, command):
@@ -190,33 +262,4 @@ class WikiPrompt:
             case _: 
                 print(f"Unknown command: {command}")
 
-    def loop(self):
-        command = ""
 
-        while command != "exit":
-            command = input("> ")
-            
-            self.parse_cmd(command)
-
-    def run_script(self, *script_or_path):
-        if len(script_or_path) == 1:
-            script_or_path = script_or_path[0]
-            # check for script at path
-            if os.path.exists(script_or_path):
-                with open(script_or_path, 'r') as script:
-                    for command in script:
-                        self.parse_cmd(command)
-            # see if it's just a file object
-            elif isinstance(script_or_path, TextIOWrapper):
-                for command in script_or_path:
-                    self.parse_cmd(command)
-            # or try to split the string by \n
-            elif '\n' in script_or_path:
-                for command in script_or_path.split('\n'):
-                    self.parse_cmd(command)
-        # otherwise check if it's a list of commands
-        elif (isinstance(script_or_path, tuple)
-         and len(script_or_path) > 1
-         and isinstance(script_or_path[0], str)):
-            for command in script_or_path:
-                self.parse_cmd(command)
