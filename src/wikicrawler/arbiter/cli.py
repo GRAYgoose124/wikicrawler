@@ -159,7 +159,6 @@ class WikiPrompt(WikiScriptEngine):
                         self.analyze_page_wrapper(page)
 
                     except (ValueError, TypeError) as e:
-                        logging.exception("Issue with see also page analysis, just an index error?", exc_info=e)
                         print_results(state['see_also'].keys(), True)
 
                 case ['links', *idx]:
@@ -171,18 +170,23 @@ class WikiPrompt(WikiScriptEngine):
                             pass
                     else:
                         for idx, para in enumerate(state['paragraph_links']):
-                            print(f"---/t{idx}/t---")
+                            print(f"---\t{idx}\t---")
                             print_results([f"\t{key}" for key in para.keys()], True)
                 case ['getlink', pgidx, idx]:
                     try:
                         pgidx = int(pgidx)
                         idx = int(idx)
-                        
-                        page = select_result(state['paragraph_links'][pgidx].keys(), self.search_precaching, idx)
-                        self.analyze_page_wrapper(page)
                     except ValueError:
-                        print("Invalid indices to paragraph link.")
+                        print("Invalid indices to paragraph link.")    
+                        print(list(state['paragraph_links'][pgidx].values()))
+                        return
 
+                    selection = list(state['paragraph_links'][pgidx].values())[idx]
+
+                    page = self.crawler.retrieve("https://en.wikipedia.org" + selection)
+
+                    self.analyze_page_wrapper(page)
+    
                 case ['list', *idx]:
                     if len(idx) == 0:
                         print_results(self.crawl_state['pages'].keys(), True)
@@ -252,6 +256,7 @@ class WikiPrompt(WikiScriptEngine):
                 print(self.pointer)
 
             case ['help']:
+                # TODO: Read from source.
                 print(*help_msg, sep='\n')
             case ['exit']:
                 pass
@@ -261,5 +266,3 @@ class WikiPrompt(WikiScriptEngine):
 
             case _: 
                 print(f"Unknown command: {command}")
-
-
