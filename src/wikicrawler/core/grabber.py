@@ -160,16 +160,11 @@ class WikiGrabber:
         see_also = {}
 
         content_text = page.find(id='mw-content-text')
-        sa_soup = content_text.select('.div-col')
-        if sa_soup is None or len(sa_soup) == 0:
-            try:
-                sa_soup = content_text.find(id='See_also').parent.nextSibling.nextSibling.children
-            except:
-                return see_also # Likely just doesn't exist.
-
-        for c in sa_soup:
-            if isinstance(c, bs4.element.Tag) and c.a is not None and 'title' in c.a:
-                see_also[c.a['title']] = "https://en.wikipedia.org" + c.a['href']
+        sa_soup = content_text.select('.div-col')[0]
+  
+        for a in sa_soup.find_all('a'):
+            if a['href'].startswith('/wiki'):
+                see_also[a['title']] = "https://en.wikipedia.org" + a['href']
 
         return see_also
 

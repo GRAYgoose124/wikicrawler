@@ -103,25 +103,26 @@ def parse_page(page, level):
     return body, sentences, words, word_freq, collocs
 
 
-def analyze_page(page, level=2):
+def analyze_page(page, level=2, printing=True):
     # todo: clean up use cases
     if not isinstance(page, tuple):
         body, sentences, words, word_freq, collocs = parse_page(page, level)
     else:
         body, sentences, words, word_freq, collocs = page
 
-    console.print(f"{'-'*80}\n[bold yellow]{page['title']} - {page['url']}[/bold yellow]")
+    if printing:
+        console.print(f"{'-'*80}\n[bold yellow]{page['title']} - {page['url']}[/bold yellow]")
 
-    print(word_freq, f'\n[bold magenta]Collocations[/bold magenta]({[" ".join(entry) for entry in collocs]})\n')
-    print("[bold magenta]Sentences[/bold magenta]\n\t[bold red]First 5:[/bold red]")
-    print_sentiment(sentences[:5])
+        print(word_freq, f'\n[bold magenta]Collocations[/bold magenta]({[" ".join(entry) for entry in collocs]})\n')
+        print("[bold magenta]Sentences[/bold magenta]\n\t[bold red]First 5:[/bold red]")
+        print_sentiment(sentences[:5])
 
-    tp_idx = int(.33*len(sentences))
-    print("\t[bold red]30% + 10:[/bold red]")
-    print_sentiment(sentences[tp_idx:tp_idx+10])
+        tp_idx = int(.33*len(sentences))
+        print("\t[bold red]30% + 10:[/bold red]")
+        print_sentiment(sentences[tp_idx:tp_idx+10])
 
-    print("\t[bold red]Last 5:[/bold red]")
-    print_sentiment(sentences[-5:])
+        print("\t[bold red]Last 5:[/bold red]")
+        print_sentiment(sentences[-5:])
 
     return word_freq, collocs
 

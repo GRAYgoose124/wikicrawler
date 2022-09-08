@@ -29,23 +29,26 @@ class WikiPrompt:
         self.oracle = Oracle(root_dir, self)
 
         # TODO: cache oracle/crawl_states/paths maybe add crawl_state to oracle.
-        self.crawl_state = {'user_choice_stack': [], 'page_stack': [], 'pages': {}, 'last_search': None}
-        self.pointer = { 'most_similar_colloc': None}
-        
-    def analyze_page_wrapper(self, page):
-        page['freq'], page['colloc'] = analyze_page(page)
+        self.crawl_state = {'user_choice_stack': [], 'page_stack': [], 'pop_stack': [], 'pages': {}, 'last_search': None}
+        self.pointer = { 'most_similar_colloc': None, 'selection': None}
+    
+    def page_wrapper(self, page):
         self.crawl_state['pages'][page['title']] = page
         self.crawl_state['page_stack'].append(page['title'])
 
         return page['freq'], page['colloc']
 
+    def analyze_page_wrapper(self, page, printing=True):
+        page['freq'], page['colloc'] = analyze_page(page, printing=printing)
+        return self.page_wrapper(page)
+        
     def handle_search(self, topic):
         results = list(self.crawler.search(topic, soup=False, precache=self.search_precaching))
+        if len(results) == 1:
+            self.analyze_page_wrapper(results[0], printing=False)
+            self.pointer['selection'] = results[0]['title']
 
-        if len(results) > 1:
-            self.crawl_state['last_search'] = results
-        else:
-            self.crawl_state['last_search'] = [results]
+        self.crawl_state['last_search'] = results
 
     def handle_url(self, url):
         if WikiCrawler.wiki_regex.match(url):
@@ -58,14 +61,14 @@ class WikiPrompt:
     def handle_state(self, subcmd):
         try:
             match subcmd:
-                case ['get_colloc', idx]:
-                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][int(idx)]]
+                case ['get_colloc']:
+                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][-1]]
                     print_results(state['colloc'], True)
 
-                case ['sim_colloc', idx, *phrase]:
+                case ['sim_colloc', *phrase]:
                     phrase = " ".join(phrase)
 
-                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][int(idx)]]
+                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][-1]]
 
                     most_similar = (0.0, None)
                     for colloc in state['colloc']:
@@ -79,35 +82,89 @@ class WikiPrompt:
                     self.pointer['most_similar_colloc'] = most_similar[1]
                     print(f"Most similar collocation: {most_similar[1]}")
 
+                case ['seealso']:
+                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][-1]]
+                    print(state['see_also'])
+                    print_results(state['see_also'].keys(), True)
+
+                case ['links', *idx]:
+                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][-1]]
+                    if len(idx) == 1:
+                        try:
+                            idx = int(idx[0])
+                            print_results(state['paragraph_links'][idx].keys(), True)
+                        except ValueError:
+                            pass
+                    else:
+                        for idx, para in enumerate(state['paragraph_links']):
+                            print(f"---/t{idx}/t---")
+                            print_results([f"\t{key}" for key in para.keys()], True)
+                case ['getlink', pgidx, idx]:
+                    state = self.crawl_state['pages'][self.crawl_state['page_stack'][-1]]
+                    try:
+                        pgidx = int(pgidx)
+                        idx = int(idx)
+                        
+                        page = select_result(state['paragraph_links'][pgidx].keys(), self.search_precaching, idx)
+                        self.analyze_page_wrapper(page)
+                    except ValueError:
+                        print("Invalid indices to paragraph link.")
+
+                case ['list']:
+                    print_results(self.crawl_state['pages'].keys(), True)
                 case ['get', idx]:
                     state = self.crawl_state['pages'][self.crawl_state['page_stack'][int(idx)]]
                     self.analyze_page_wrapper(state)
 
-                case ['list']:
-                    print_results(self.crawl_state['pages'].keys(), True)
-
                 case ['res']:
                     print_results(self.crawl_state['last_search'], self.search_precaching)
-
-                case ['sel', idx]:
-                    page = select_result(self.crawl_state['last_search'], self.search_precaching, int(idx))
+                case ['sel', *idx]:
+                    if len(self.crawl_state['last_search']) == 1:
+                        page = self.crawl_state['last_search'][0]
+                    elif len(idx) >= 1:
+                        try:
+                            page = select_result(self.crawl_state['last_search'], self.search_precaching, int(idx[0]))
+                        except ValueError:
+                            page = select_result(self.crawl_state['last_search'], self.search_precaching)
+                    else:
+                        page = select_result(self.crawl_state['last_search'], self.search_precaching, -1)
 
                     self.analyze_page_wrapper(page)
                     self.crawl_state['user_choice_stack'].append(page['title'])
-               
+
+                case ['pop']:
+                    self.pointer['selection'] = self.crawl_state['page_stack'].pop()
+                    self.crawl_state['pop_stack'].append(self.pointer['selection'])
+                case ['unpop']:
+                    self.crawl_state['page_stack'].append(self.crawl_state['pop_stack'].pop())
+                case ['show']:
+                    try:
+                        analyze_page(self.crawl_state['pages'][self.pointer['selection']])
+                    except KeyError:
+                        print("No selection to show.")
+
                 case _:
                     pass
         except (ValueError, IndexError) as e:
             logging.exception("Handle_state choice error.", exc_info=e)
 
     def handle_colloc_move(self, jump_phrase):
-        self.run_script(f"st sim_colloc 0 {jump_phrase}",
+        self.run_script(f"st sim_colloc {jump_phrase}",
                         f"s {self.pointer['most_similar_colloc']}",
                          "st sel 0")
+
+    def handle_freq_move(self, jump_phrase):
+        pass
+
+    def handle_write_func(self, name):
+        pass
 
     def parse_cmd(self, command):
         match command.split():
             case ['s', *phrase]: 
+                if len(phrase) == 0:
+                    return
+
                 self.handle_search(" ".join(phrase))
 
             case ['u', url]:
@@ -126,6 +183,9 @@ class WikiPrompt:
                 print(*help_msg, sep='\n')
             case ['exit']:
                 pass
+
+            case ['newf', name]:
+                self.handle_write_func(name)
 
             case _: 
                 print(f"Unknown command: {command}")
