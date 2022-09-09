@@ -136,6 +136,8 @@ class WikiScriptEngine:
     # TODO: Fix frayed logic, printing should be separate. use parse_page instead.
     def analyze_page_wrapper(self, page, printing=True):
         page['freq'], page['colloc'] = analyze_page(page, printing=printing)
+        self.pointer['selection'] = page['title']
+
         return self.page_wrapper(page)
     
     def conditional_idx_selector(self, idx):

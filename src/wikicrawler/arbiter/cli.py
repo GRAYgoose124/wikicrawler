@@ -19,13 +19,9 @@ logger = logging.getLogger(__name__)
 
 class WikiPrompt(WikiScriptEngine):
     def __init__(self, root_dir, crawler, search_precaching=False, cacher=None):
-        super().__init__(root_dir, search_precaching=search_precaching)
+        super().__init__(root_dir, search_precaching=search_precaching, cacher=cacher)
 
         self.crawler = crawler
-
-        self.cacher = cacher
-        if cacher:
-            cacher.register_hook(self.save_state)
 
         self.oracle = Oracle(self)
     
@@ -51,11 +47,6 @@ class WikiPrompt(WikiScriptEngine):
         else:
             print("Invalid Wikipedia url.")
     
-    def handle_colloc_move(self, jump_phrase):
-        self.run_script(f"st colloc {jump_phrase}",
-                        f"s most_similar_colloc",
-                        "st res 0")
-
     def handle_freq_move(self, jump_phrase):
         pass
 
@@ -141,9 +132,7 @@ class WikiPrompt(WikiScriptEngine):
         if len(idx) == 0:
             print_results(self.crawl_state['last_search'], self.search_precaching)
         # st res <idx>
-        else:
-            # TODO: last_search refactor from tuple to url to retrieve.
-            
+        else:            
             if len(self.crawl_state['last_search']) == 1:
                 page = self.crawl_state['last_search'][0]
             elif len(idx) >= 1:
@@ -154,7 +143,6 @@ class WikiPrompt(WikiScriptEngine):
                     page = self.conditional_idx_selector(idx)
 
             self.analyze_page_wrapper(page)
-            self.pointer['selection'] = page['title']
             self.crawl_state['user_choice_stack'].append(page['title'])
 
     def handle_state(self, subcmd):
@@ -171,11 +159,11 @@ class WikiPrompt(WikiScriptEngine):
         st links <idx> - list paragraph links
         st links - list all paragraph links
         
-        st list <idx> - get page from list
-        st list - list pages
+        st hist <idx> - get page from list
+        st hist - list pages
         
-        st res <idx> - get page from last search
-        st res - list last search
+        st found <idx> - get page from last search
+        st found - list last search
         
         st pop - pop page from stack
         st unpop - unpop page from stack
@@ -206,9 +194,9 @@ class WikiPrompt(WikiScriptEngine):
                     self.handle_state_seealso(state, idx)
                 case ['links', *idx]:
                     self.handle_state_links(state, idx)
-                case ['list', *idx]:
+                case ['hist', *idx]:
                     self.handle_state_list(state, idx)
-                case ['res', *idx]:
+                case ['found', *idx]:
                     self.handle_state_res(state, idx)
 
                 case ['pop']:
@@ -255,9 +243,8 @@ class WikiPrompt(WikiScriptEngine):
         u <url> - search for url
         
         st <subcmd> - handle state commands
-        oracle <subcmd> - handle oracle commands
+        ora <subcmd> - handle oracle commands
 
-        cmov <phrase> - move to first page matched by phrase==collocations of current page.
 
         pointer - print pointer
         state - print state
@@ -280,10 +267,8 @@ class WikiPrompt(WikiScriptEngine):
             case ['st', *subcmd]:
                 self.handle_state(subcmd)
 
-            case ['cmov', *jump_phrase]:
-                self.handle_colloc_move(" ".join(jump_phrase))
 
-            case ['oracle', *cmd]:
+            case ['ora', *cmd]:
                 self.oracle.parse_cmd(cmd)
 
             case ['pointer']:

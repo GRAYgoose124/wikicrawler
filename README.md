@@ -26,22 +26,22 @@ To start the app run after install: (use a venv!)
 
 This will reveal a prompt, try the `help` and `st help`  command.
 
-    >
+    > help
+    > exit
 
 ### Typical workflows:
 
 #### Search
     > s <phrase>
-    > st res [idx]      # no idx: list, idx: get
+    > st found [idx]      # no idx: list, idx: get
     > st show [amount]      # float: percent, int: sentences
 #### Collocation traverse
     > s <phrase>
-    > cmov <phrase>     # use most similar collocation in current page
+    > ora cmov <phrase>     # use most similar collocation in current page
 #### State
-    > st list [idx]     # page traversal history
+    > st hist [idx]     # page traversal history
 
-    > st res [idx]      # search travesal
+    > st found [idx]      # search travesal
 
     > st pop
     > st unpop
-
