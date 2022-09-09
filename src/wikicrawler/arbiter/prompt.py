@@ -5,11 +5,10 @@ from nltk.corpus import wordnet as wn
 from nltk.metrics.distance import jaro_winkler_similarity
 
 from ..core.crawler import WikiCrawler
-from ..core.sentiment.paragraph import analyze_page, print_sentiment
+from ..core.sentiment.paragraph import print_sentiment
 
 from .oracle import Oracle
-from .utils.other import help_msg
-from .utils.search import print_results, select_result
+from .utils.search import print_results
 
 from .script import WikiScriptEngine
 
@@ -122,7 +121,7 @@ class WikiPrompt(WikiScriptEngine):
                 logger.debug("Invalid index to page list.", exc_info=e)
                         
     def handle_state_found(self, state, idx):
-        # st res
+        # st found
         if len(idx) == 0:
             if isinstance(self.crawl_state['last_search'], dict):
                 last_search = list(self.crawl_state['last_search'].keys())
@@ -131,15 +130,19 @@ class WikiPrompt(WikiScriptEngine):
 
             print_results(last_search)
         # st res <idx>
-        else:            
+        else:
             if len(self.crawl_state['last_search']) == 1:
                 page = self.crawl_state['last_search'][0]
             elif len(idx) >= 1:
-                page = self.crawl_state['last_search'][int(idx[0])]
-                if isinstance(page, str):
-                    page = self.crawler.retrieve(page)
-                else:
-                    page = self.conditional_idx_selector(idx)
+                try:
+                    page = self.crawl_state['last_search'][int(idx[0])]
+                    if isinstance(page, str):
+                        page = self.crawler.retrieve(page)
+                    elif isinstance(page, tuple):
+                        page = page[1]()
+            
+                except ValueError:
+                    pass
 
             self.analyze_page_wrapper(page)
 
