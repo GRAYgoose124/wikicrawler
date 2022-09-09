@@ -52,21 +52,21 @@ class WikiScriptEngine:
             if os.path.exists(script_or_path):
                 with open(script_or_path, 'r') as script:
                     for command in script:
-                        self.parse_cmd(command)
+                        self.parse_cmd(command, interactive=False)
             # see if it's just a file object
             elif isinstance(script_or_path, TextIOWrapper):
                 for command in script_or_path:
-                    self.parse_cmd(command)
+                    self.parse_cmd(command, interactive=False)
             # or try to split the string by \n
             elif '\n' in script_or_path:
                 for command in script_or_path.split('\n'):
-                    self.parse_cmd(command)
+                    self.parse_cmd(command, interactive=False)
         # otherwise check if it's a list of commands
         elif (isinstance(script_or_path, tuple)
          and len(script_or_path) > 1
          and isinstance(script_or_path[0], str)):
             for command in script_or_path:
-                self.parse_cmd(command)
+                self.parse_cmd(command, interactive=False)
     
     # helpers
     def page_wrapper(self, page):

@@ -24,7 +24,7 @@ class WikiPrompt(WikiScriptEngine):
         self.crawler = crawler
         self.oracle = Oracle(root_dir, self)
     
-    def handle_search(self, topic):
+    def handle_search(self, topic, interactive=True):
         if topic == 'most_similar_colloc':
             topic = self.pointer['most_similar_colloc']
 
@@ -33,7 +33,7 @@ class WikiPrompt(WikiScriptEngine):
         results = list(self.crawler.search(topic, soup=False, precache=self.search_precaching))
 
         if len(results) == 1:
-            self.analyze_page_wrapper(results[0], printing=True)
+            self.analyze_page_wrapper(results[0], printing=interactive)
             self.pointer['selection'] = results[0]['title']
 
         self.crawl_state['last_search'] = results
@@ -190,13 +190,13 @@ class WikiPrompt(WikiScriptEngine):
         except (ValueError, IndexError) as e:
             logging.exception("Handle_state choice error.", exc_info=e)
 
-    def parse_cmd(self, command):
+    def parse_cmd(self, command, interactive=True):
         match command.split():
             case ['s', *phrase]: 
                 if len(phrase) == 0:
                     return
 
-                self.handle_search(" ".join(phrase))
+                self.handle_search(" ".join(phrase), interactive=interactive)
 
             case ['u', url]:
                 self.handle_url(url)
