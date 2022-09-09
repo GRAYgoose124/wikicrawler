@@ -8,7 +8,7 @@ from ..core.crawler import WikiCrawler
 from ..core.db.cacher import WikiCacher
 from ..core.utils.config import init_config
 
-from .cli import WikiPrompt
+from .prompt import WikiPrompt
 
 
 logging.basicConfig(format='%(name)s:%(lineno)d::%(levelname)s> %(message)s', level=logging.DEBUG)

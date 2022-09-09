@@ -2,6 +2,9 @@ import logging
 import os
 
 
+logger = logging.getLogger(__name__)
+
+
 class Oracle():
     def __init__(self, prompt):
         self.prompt = prompt
@@ -14,6 +17,10 @@ class Oracle():
 
         self.brain = None
 
+    def handle_freq_move(self, jump_phrase):
+        pass
+
+    # TODO: refactor into file.
     def handle_colloc_move(self, jump_phrase):
         self.prompt.run_script(f"st colloc {jump_phrase}",
                         f"s most_similar_colloc",
@@ -27,15 +34,19 @@ class Oracle():
         div - divine traversal state
 
         cmov <phrase> - move to first page matched by phrase==collocations of current page.
+        fmov <phrase> - move to first page matched by phrase==frequency of current page.
 
         help - show help
         """
         match command:
             case ['div']:
-                logging.debug('div proc')
+                logger.debug('div proc')
 
             case ['cmov', *jump_phrase]:
                 self.handle_colloc_move(" ".join(jump_phrase))
+
+            case ['fmov', *jump_phrase]:
+                self.handle_freq_move(" ".join(jump_phrase))
 
             case ['help']:
                 print(self.parse_cmd.__doc__)

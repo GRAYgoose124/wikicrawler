@@ -29,7 +29,7 @@ class WikiPrompt(WikiScriptEngine):
         if topic == 'most_similar_colloc':
             topic = self.pointer['most_similar_colloc']
 
-        logging.debug(f"Search: {topic}")
+        logger.debug(f"Search: {topic}")
 
         results = list(self.crawler.search(topic, soup=False, precache=self.search_precaching))
 
@@ -47,9 +47,6 @@ class WikiPrompt(WikiScriptEngine):
         else:
             print("Invalid Wikipedia url.")
     
-    def handle_freq_move(self, jump_phrase):
-        pass
-
     # handle_state
     def handle_state_colloc(self, state, phrase):
         # st colloc
@@ -63,7 +60,6 @@ class WikiPrompt(WikiScriptEngine):
             for colloc in state['colloc']:
                 colloc = " ".join(colloc)
                 similarity = jaro_winkler_similarity(colloc, phrase) 
-                # logging.debug(f"{colloc} == {phrase}: {similarity}")
 
                 if similarity > most_similar[0]:
                     most_similar = (similarity, colloc)
@@ -104,15 +100,15 @@ class WikiPrompt(WikiScriptEngine):
                 idx = int(idx[0])
                 print_results(state['paragraph_links'][idx].keys(), True)
             except ValueError:
-                logging.debug("Invalid index to paragraph link. Did you enter a number?")
+                logger.debug("Invalid index to paragraph link. Did you enter a number?")
         # st links - list
         else:
             try:
                 for idx, para in enumerate(state['paragraph_links']):
                     print(f"---\t{idx}\t---")
                     print_results([f"\t{key}" for key in para.keys()], True)
-            except TypeError:
-                logging.debug('No paragraph links found. Is state set?')
+            except TypeError as e:
+                logger.debug(f'No paragraph links found. Is state set? {state}', exc_info=e)
 
     def handle_state_list(self, state, idx):
         # st list
@@ -124,8 +120,8 @@ class WikiPrompt(WikiScriptEngine):
                 idx = int(idx[0])
                 state = self.crawl_state['pages'][self.crawl_state['page_stack'][idx]]
                 self.analyze_page_wrapper(state)
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("Invalid index to page list.", exc_info=e)
                         
     def handle_state_res(self, state, idx):
         # st res
@@ -267,7 +263,6 @@ class WikiPrompt(WikiScriptEngine):
             case ['st', *subcmd]:
                 self.handle_state(subcmd)
 
-
             case ['ora', *cmd]:
                 self.oracle.parse_cmd(cmd)
 
@@ -280,7 +275,7 @@ class WikiPrompt(WikiScriptEngine):
                 # TODO: Read from source.
                 print(self.parse_cmd.__doc__, sep='\n')
             case ['exit']:
-                pass
+                print("Goodbye!")
 
             case ['newf', name]:
                 self.cmd_func_init(name)

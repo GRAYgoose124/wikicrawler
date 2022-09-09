@@ -21,7 +21,7 @@ from .utils.model_to_dict import model_to_dict
 
 logger = logging.getLogger(__name__)
 
-
+# TODO: make grabber asyncronous
 class WikiGrabber:
     wiki_regex = re.compile("^https*://.*\.wikipedia\.org.*")
     link_regex = re.compile("^https*://.*\..*")
@@ -53,10 +53,11 @@ class WikiGrabber:
                 response = urllib.request.urlopen(url)
                 url = response.geturl()
                 page = response.read().decode("utf-8")
-            except urllib.error.HTTPError:
-                logger.exception(url)
+            except urllib.error.HTTPError as e:
+                logger.debug(f"{url} is invalid?", exc_info=e)
                 sleep(1)
-            except urllib.error.URLError:
+            except urllib.error.URLError as e:
+                logger.debug(f"{url} timed out.", exc_info=e)
                 sleep(1)
                 return self.fetch(url)
         else:
@@ -121,8 +122,8 @@ class WikiGrabber:
 
                 links = {x.text: x['href'] for x in filter(None, [a if a['href'].startswith('/wiki') else None for a in pa.find_all('a')])}
                 paragraph_links.append(links)
-        except (AttributeError, KeyError):
-            pass
+        except (AttributeError, KeyError) as e:
+            logger.debug("Missing mw-parser-output - Is this even a wiki page?", exc_info=e)
 
         return paragraphs, paragraph_links
 
@@ -133,8 +134,8 @@ class WikiGrabber:
             for li in page.find(id='toc').ul.find_all('li'):
                 _, name = li.a.get_text().split(' ', 1)
                 links[name] = page.url + li.a.get('href')
-        except AttributeError:
-            pass # TODO: This this exception is thrown - it means there's no toc.
+        except AttributeError as e:
+            logger.debug("Missing toc?", exc_info=e)
 
         return links
 
@@ -146,8 +147,8 @@ class WikiGrabber:
     
         try:
             ref_body = content_text.select('.references')[0]
-        except IndexError:
-            # TODO: Proper debug logging on all BS exceptions.
+        except IndexError as e:
+            logger.debug(f"references", exc_info=e)
             return references # Improperly formatted wiki pages, doesn't have .references.
 
         for child in ref_body.children:
@@ -166,13 +167,17 @@ class WikiGrabber:
         content_text = page.find(id='mw-content-text')
         try:
             sa_soup = content_text.select('.div-col')[0]
-        except IndexError:
+        except IndexError as e:
+            logger.debug("No see also?", exc_info=e)
+
             return see_also
 
         for a in sa_soup.find_all('a'):
             if a['href'].startswith('/wiki'):
-                see_also[a['title']] = "https://en.wikipedia.org" + a['href']
-
+                try:
+                    see_also[a['title']] = "https://en.wikipedia.org" + a['href']
+                except KeyError as e:
+                    logger.debug(f"No title for see also link? {a}", exc_info=e)
         return see_also
 
     def __get_media(self, page):
