@@ -56,6 +56,9 @@ class WikiGrabber:
             except urllib.error.HTTPError:
                 logger.exception(url)
                 sleep(1)
+            except urllib.error.URLError:
+                sleep(1)
+                return self.fetch(url)
         else:
             raise ValueError(url)
     

@@ -1,7 +1,5 @@
-from io import TextIOWrapper
-import os
 import logging
-import readline
+
 import nltk
 from nltk.corpus import wordnet as wn
 from nltk.metrics.distance import jaro_winkler_similarity
@@ -12,65 +10,15 @@ from ..core.sentiment.paragraph import analyze_page
 from .oracle import Oracle
 from .utils.other import help_msg
 from .utils.search import print_results, select_result
+from .script import WikiScriptEngine
 
 
 logger = logging.getLogger(__name__)
 
 
-# TODO: Metaclass which defines match statement basd on method tree.
-class WikiScriptEngine:
-    def __init__(self):
-        self.functions = {}
-
-    def cmd_func_init(self, name):
-        function = []
-        line = None
-        while True:
-            line = input(">>> ")
-            if line == 'end':
-                break
-
-            function.append(line)
-            
-        self.functions[name] = function
-    
-    def parse_cmd(self, command):
-        raise NotImplementedError("This method must be implemented by a subclass.")
-
-    def loop(self):
-        command = ""
-
-        while command != "exit":
-            command = input("> ")
-            
-            self.parse_cmd(command)
-
-    def run_script(self, *script_or_path):
-        if len(script_or_path) == 1:
-            script_or_path = script_or_path[0]
-            # check for script at path
-            if os.path.exists(script_or_path):
-                with open(script_or_path, 'r') as script:
-                    for command in script:
-                        self.parse_cmd(command)
-            # see if it's just a file object
-            elif isinstance(script_or_path, TextIOWrapper):
-                for command in script_or_path:
-                    self.parse_cmd(command)
-            # or try to split the string by \n
-            elif '\n' in script_or_path:
-                for command in script_or_path.split('\n'):
-                    self.parse_cmd(command)
-        # otherwise check if it's a list of commands
-        elif (isinstance(script_or_path, tuple)
-         and len(script_or_path) > 1
-         and isinstance(script_or_path[0], str)):
-            for command in script_or_path:
-                self.parse_cmd(command)
-
-
 class WikiPrompt(WikiScriptEngine):
     def __init__(self, root_dir, crawler, search_precaching=False):
+        super().__init__()
         # TODO: move to app setup
         nltk.download('wordnet')
         nltk.download('omw-1.4')
@@ -79,10 +27,6 @@ class WikiPrompt(WikiScriptEngine):
 
         self.crawler = crawler
         self.oracle = Oracle(root_dir, self)
-
-        # TODO: cache oracle/crawl_states/paths maybe add crawl_state to oracle.
-        self.crawl_state = {'user_choice_stack': [], 'page_stack': [], 'pop_stack': [], 'pages': {}, 'last_search': None}
-        self.pointer = { 'most_similar_colloc': None, 'selection': None}
     
     def page_wrapper(self, page):
         self.crawl_state['pages'][page['title']] = page
@@ -96,7 +40,13 @@ class WikiPrompt(WikiScriptEngine):
         return self.page_wrapper(page)
         
     def handle_search(self, topic):
+        if topic == 'most_similar_colloc':
+            topic = self.pointer['most_similar_colloc']
+
+        logging.debug(f"Search: {topic}")
+
         results = list(self.crawler.search(topic, soup=False, precache=self.search_precaching))
+
         if len(results) == 1:
             self.analyze_page_wrapper(results[0], printing=False)
             self.pointer['selection'] = results[0]['title']
@@ -133,8 +83,10 @@ class WikiPrompt(WikiScriptEngine):
         try:
             match subcmd:
                 case ['colloc', *phrase]:
+                    # st colloc
                     if len(phrase) == 0:
                         print_results(state['colloc'], True)
+                    # st colloc <phrase>
                     else:
                         phrase = " ".join(phrase)
 
@@ -151,41 +103,46 @@ class WikiPrompt(WikiScriptEngine):
                         print(f"Most similar collocation: {most_similar[1]}")
 
                 case ['sa', *idx]:
+                    # st sa <idx>
                     try:
                         idx = int(idx[0])
                         selection = list(state['see_also'].values())[idx]
 
                         page = self.crawler.retrieve(selection)
                         self.analyze_page_wrapper(page)
-
+                    # st sa
                     except (ValueError, TypeError) as e:
                         print_results(state['see_also'].keys(), True)
 
                 case ['links', *idx]:
-                    if len(idx) == 1:
+                    # st links <pgidx> <idx> - get
+                    if len(idx) >= 2:
+                        try:
+                            pgidx = int(idx[0])
+                            idx = int(idx[1])
+                        except ValueError:
+                            print("Invalid indices to paragraph link.")    
+                            print(list(state['paragraph_links'][pgidx].values()))
+                            return
+
+                        selection = list(state['paragraph_links'][pgidx].values())[idx]
+
+                        page = self.crawler.retrieve("https://en.wikipedia.org" + selection)
+
+                        self.analyze_page_wrapper(page)
+                    # st links <idx> - equivalent to st links -1 <idx>
+                    elif len(idx) == 1:
                         try:
                             idx = int(idx[0])
                             print_results(state['paragraph_links'][idx].keys(), True)
                         except ValueError:
                             pass
+                    # st links - list
                     else:
                         for idx, para in enumerate(state['paragraph_links']):
                             print(f"---\t{idx}\t---")
                             print_results([f"\t{key}" for key in para.keys()], True)
-                case ['getlink', pgidx, idx]:
-                    try:
-                        pgidx = int(pgidx)
-                        idx = int(idx)
-                    except ValueError:
-                        print("Invalid indices to paragraph link.")    
-                        print(list(state['paragraph_links'][pgidx].values()))
-                        return
 
-                    selection = list(state['paragraph_links'][pgidx].values())[idx]
-
-                    page = self.crawler.retrieve("https://en.wikipedia.org" + selection)
-
-                    self.analyze_page_wrapper(page)
     
                 case ['list', *idx]:
                     if len(idx) == 0:
@@ -204,11 +161,11 @@ class WikiPrompt(WikiScriptEngine):
                     else:
                         if len(self.crawl_state['last_search']) == 1:
                             page = self.crawl_state['last_search'][0]
-                        # Redundant condition with select_result. TODO: Clean up frayed logic paths.
                         elif len(idx) >= 1:
                             page = self.conditional_idx_selector(idx)
 
                         self.analyze_page_wrapper(page)
+                        self.pointer['selection'] = page['title']
                         self.crawl_state['user_choice_stack'].append(page['title'])
 
                 case ['pop']:
@@ -229,8 +186,8 @@ class WikiPrompt(WikiScriptEngine):
 
     def handle_colloc_move(self, jump_phrase):
         self.run_script(f"st colloc {jump_phrase}",
-                        f"s {self.pointer['most_similar_colloc']}",
-                         "st sel 0")
+                        f"s most_similar_colloc",
+                        "st res 0")
 
     def handle_freq_move(self, jump_phrase):
         pass
@@ -260,6 +217,9 @@ class WikiPrompt(WikiScriptEngine):
                 print(*help_msg, sep='\n')
             case ['exit']:
                 pass
+
+            case ['p_colloc']:
+                print("Colloc:", self.pointer['most_similar_colloc'])
 
             case ['newf', name]:
                 self.handle_write_func(name)
