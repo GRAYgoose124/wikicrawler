@@ -1,13 +1,19 @@
-def print_results(results, precache):
-    for idx, res in enumerate(results):
-        if isinstance(res, str):
-            print(f"\t{idx}: {res}")
-        elif 'title' in res and isinstance(res, dict):
-            print(f"\t{idx}: {res['title']}")
-        elif not precache: # TODO: Just check if list.
-            print(f"\t{idx}: {res[0]}")
-        else:
-            print(f"\t{idx}: {res}")
+import cmd
+
+
+cli = cmd.Cmd()
+
+
+def print_results(results, dw=240):
+   
+
+    if isinstance(results[0], dict):
+        cli.columnize([f"\t{i}: {r['title']}" for i, r in enumerate(results)], displaywidth=dw)
+    elif isinstance(results[0], tuple):
+        cli.columnize([f"\t{i}: {r[0]}" for i, r in enumerate(results)], displaywidth=dw)
+    else:
+        cli.columnize([f"\t{i}: {r}" for i, r in enumerate(results)], displaywidth=dw)
+        
 
 def select_result(results, precache, index=None):
     if len(results) > 1:

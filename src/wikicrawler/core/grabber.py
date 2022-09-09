@@ -45,6 +45,7 @@ class WikiGrabber:
 
         self.convert_latex = convert_latex
         self.save_media = save_media
+        self.process_media_links = save_media
 
         if media_folder is not None:
             self.media_save_location = media_folder
@@ -97,7 +98,9 @@ class WikiGrabber:
             nl2t = LatexNodes2Text().nodelist_to_text
             paragraphs = [nl2t(LatexWalker(paragraph).get_latex_nodes()[0]) for paragraph in paragraphs]
 
-        media_list = self.__get_media(page) 
+        media_list = None
+        if self.process_media_links:
+            media_list = self.__get_media(page) 
 
         wiki = { 'url': url, 
                 'title': page.find(id='firstHeading').get_text(), 
@@ -111,7 +114,7 @@ class WikiGrabber:
         if self.cacher is not None:
             self.cacher.cache(wiki)
         
-        # TODO: Remove frayed logic.
+        # TODO: Remove frayed logic - just use fetch if we want page.
         if soup:
             return page
         else:
@@ -120,7 +123,6 @@ class WikiGrabber:
     # Wikipedia page parsing
     
     def __paragraphs(self, page):
-        # rip paragraphs - TODO:get links from paragraph too
         paragraphs = []
         paragraph_links = []
 
@@ -196,23 +198,24 @@ class WikiGrabber:
         save_locs = []
         dl_urls = []
 
-        logger.debug("Downloading page media... (This may take a moment.)")
-        for img in page.find_all('a', attrs={'class': "image"}):
-            url = 'https://en.wikipedia.org/' + img['href']
-            # TODO: Fix worker thread blocking.
-            dl_page = self.fetch(url)
+        if self.process_media_links:
+            logger.debug("Downloading page media... (This may take a moment.)")
+            for img in page.find_all('a', attrs={'class': "image"}):
+                url = 'https://en.wikipedia.org/' + img['href']
+                # TODO: Fix worker thread blocking.
+                dl_page = self.fetch(url)
 
-            dl_link = dl_page.select('.fullMedia')[0].p.a
+                dl_link = dl_page.select('.fullMedia')[0].p.a
 
-            dl_url = "https://" + dl_link['href'].lstrip('//')
-            save_loc = Path(self.media_save_location, dl_link['title'])
+                dl_url = "https://" + dl_link['href'].lstrip('//')
+                save_loc = Path(self.media_save_location, dl_link['title'])
 
-            if not save_loc.exists():
-                save_locs.append(str(save_loc))
-                dl_urls.append(dl_url)
+                if not save_loc.exists():
+                    save_locs.append(str(save_loc))
+                    dl_urls.append(dl_url)
 
         # Download the media with workers. TODO: Handle with asyncio loop to avoid blocking caller.
-        if self.save_media:
+        if self.save_media and self.process_media_links:
             try:
                 # with Pool(len(dl_urls)) as p:
                 #     p.starmap(urllib.request.urlretrieve, zip(dl_urls, save_locs))

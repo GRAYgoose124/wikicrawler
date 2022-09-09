@@ -49,7 +49,7 @@ class WikiPrompt(WikiScriptEngine):
     def handle_state_colloc(self, state, phrase):
         # st colloc
         if len(phrase) == 0:
-            print_results(state['colloc'], True)
+            print_results(state['colloc'])
         # st colloc <phrase>
         else:
             phrase = " ".join(phrase)
@@ -74,7 +74,7 @@ class WikiPrompt(WikiScriptEngine):
             self.analyze_page_wrapper(page)
         # st sa
         except (ValueError, TypeError, IndexError) as e:
-            print_results(state['see_also'].keys(), True)
+            print_results(list(state['see_also'].keys()), True)
 
     def handle_state_links(self, state, idx):
         # st links <pgidx> <idx> - get
@@ -96,7 +96,7 @@ class WikiPrompt(WikiScriptEngine):
         elif len(idx) == 1:
             try:
                 idx = int(idx[0])
-                print_results(state['paragraph_links'][idx].keys(), True)
+                print_results(state['paragraph_links'][idx].keys())
             except ValueError:
                 logger.debug("Invalid index to paragraph link. Did you enter a number?")
         # st links - list
@@ -104,14 +104,14 @@ class WikiPrompt(WikiScriptEngine):
             try:
                 for idx, para in enumerate(state['paragraph_links']):
                     print(f"---\t{idx}\t---")
-                    print_results([f"\t{key}" for key in para.keys()], True)
+                    print_results(list(para.keys()))
             except TypeError as e:
                 logger.debug(f'No paragraph links found. Is state set? {state}', exc_info=e)
 
     def handle_state_hist(self, state, idx):
         # st list
         if len(idx) == 0:
-            print_results(self.crawl_state['pages'].keys(), True)
+            print_results(list(self.crawl_state['pages'].keys()))
         # st list <idx>
         else:
             try:
@@ -124,7 +124,12 @@ class WikiPrompt(WikiScriptEngine):
     def handle_state_found(self, state, idx):
         # st res
         if len(idx) == 0:
-            print_results(self.crawl_state['last_search'], self.search_precaching)
+            if isinstance(self.crawl_state['last_search'], dict):
+                last_search = list(self.crawl_state['last_search'].keys())
+            else:
+                last_search = self.crawl_state['last_search']
+
+            print_results(last_search)
         # st res <idx>
         else:            
             if len(self.crawl_state['last_search']) == 1:
