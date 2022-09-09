@@ -44,6 +44,7 @@ class WikiScriptEngine:
         else:
             self.pointer = { 'most_similar_colloc': None, 'selection': None, 'selected_text': None}
     
+    # TODO: Use PageCacher to call this.
     def del_state(self):
         self.crawl_state = {'user_choice_stack': [], 'page_stack': [], 'pop_stack': [], 'pages': {}, 'last_search': None}
         self.pointer = { 'most_similar_colloc': None, 'selection': None, 'selected_text': None}
@@ -57,8 +58,10 @@ class WikiScriptEngine:
     def save_state(self):
         with open(self.cli_dir + '/crawl_state.json', 'w') as f:
             # TODO: make last search just have links in the first place?
-            # Removing so partials don't cause a problem.
-            self.crawl_state['last_search'] = None
+            # Removing so partials don't cause a problem. TODO: See above. Need to refactor to remove partials completely.
+            if isinstance(self.crawl_state['last_search'][0], tuple):
+                self.crawl_state['last_search'] = [e[1].args[0] for e in self.crawl_state['last_search']]
+            
             json.dump(self.crawl_state, f)
         
         with open(self.cli_dir + '/function_cache.json', 'w') as f:
@@ -67,16 +70,22 @@ class WikiScriptEngine:
         with open(self.cli_dir + '/pointer.json', 'w') as f:
             json.dump(self.pointer, f)
 
-    def cmd_func_init(self, name):
+    def cmd_func_init(self, name, lines=None):
         function = []
         line = None
-        while True:
-            line = input("\t")
-            if line == 'end':
-                break
 
-            function.append(line)
-            
+        # interactive function define
+        if lines is None:
+            while True:
+                line = input("\t")
+                if line == 'end':
+                    break
+
+                function.append(line)
+        # script function define using lines
+        else:
+            function = lines
+
         self.functions[name] = function
     
     def parse_cmd(self, command):

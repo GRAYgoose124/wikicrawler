@@ -3,9 +3,9 @@ import os
 
 
 class Oracle():
-    def __init__(self, root_dir, prompt):
+    def __init__(self, prompt):
         self.prompt = prompt
-        oracle_path = root_dir + "/oracle"
+        oracle_path = prompt.root_dir + "/data/oracle"
 
         if not os.path.exists(oracle_path):
             os.makedirs(oracle_path)

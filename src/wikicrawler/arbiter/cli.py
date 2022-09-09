@@ -22,7 +22,7 @@ class WikiPrompt(WikiScriptEngine):
         super().__init__(root_dir, search_precaching=search_precaching)
 
         self.crawler = crawler
-        self.oracle = Oracle(root_dir, self)
+        self.oracle = Oracle(self)
     
     def handle_search(self, topic, interactive=True):
         if topic == 'most_similar_colloc':
@@ -137,10 +137,16 @@ class WikiPrompt(WikiScriptEngine):
             print_results(self.crawl_state['last_search'], self.search_precaching)
         # st res <idx>
         else:
+            # TODO: last_search refactor from tuple to url to retrieve.
+            
             if len(self.crawl_state['last_search']) == 1:
                 page = self.crawl_state['last_search'][0]
             elif len(idx) >= 1:
-                page = self.conditional_idx_selector(idx)
+                page = self.crawl_state['last_search'][int(idx[0])]
+                if isinstance(page, str):
+                    page = self.crawler.retrieve(page)
+                else:
+                    page = self.conditional_idx_selector(idx)
 
             self.analyze_page_wrapper(page)
             self.pointer['selection'] = page['title']
@@ -176,6 +182,10 @@ class WikiPrompt(WikiScriptEngine):
         
         st most_similar_colloc - get most similar collocation
 
+        st save - save current page to file
+        st delete - delete current page from file
+
+        st help - print this message
         """
         try:
             state = self.crawl_state['pages'][self.crawl_state['page_stack'][-1]]

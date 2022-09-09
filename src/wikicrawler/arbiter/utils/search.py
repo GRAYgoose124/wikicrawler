@@ -1,6 +1,8 @@
 def print_results(results, precache):
     for idx, res in enumerate(results):
-        if 'title' in res and isinstance(res, dict):
+        if isinstance(res, str):
+            print(f"\t{idx}: {res}")
+        elif 'title' in res and isinstance(res, dict):
             print(f"{idx}: {res['title']}")
         elif not precache: # TODO: Just check if list.
             print(f"{idx}: {res[0]}")

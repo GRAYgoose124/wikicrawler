@@ -32,6 +32,8 @@ def main():
 
         logger.info("Arbiter started, enjoy your tumble.")
         prompt.loop()
+
+        # TODO: Factor with WikiCacher.
         prompt.save_state()
 
 
