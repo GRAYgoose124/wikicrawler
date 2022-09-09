@@ -90,10 +90,7 @@ def parse_page(page, level):
 
 def analyze_page(page, amount=0.1, indices=None, level=2, printing=True):
     # todo: clean up use cases
-    if not isinstance(page, tuple):
-        body, sentences, words, word_freq, collocs = parse_page(page, level)
-    else:
-        body, sentences, words, word_freq, collocs = page
+    body, sentences, words, word_freq, collocs = parse_page(page, level)
 
     if printing:
         console.print(f"{'-'*80}\n[bold yellow]{page['title']} - {page['url']}[/bold yellow]")
@@ -120,7 +117,7 @@ def analyze_page(page, amount=0.1, indices=None, level=2, printing=True):
         print("\t[bold red]Last 5:[/bold red]")
         print_sentiment(sentences[-5:])
 
-    return word_freq, collocs
+    return body, sentences, words, word_freq, collocs
 
 
 def analyze_pages(pages):

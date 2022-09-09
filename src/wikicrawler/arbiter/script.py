@@ -1,3 +1,4 @@
+from curses import wrapper
 import json
 import logging
 import os
@@ -128,14 +129,19 @@ class WikiScriptEngine:
     def page_wrapper(self, page):
         self.crawl_state['pages'][page['title']] = page
         self.crawl_state['page_stack'].append(page['title'])
-
-        return page['freq'], page['colloc']
-
-    # TODO: Fix frayed logic, printing should be separate. use parse_page instead.
-    def analyze_page_wrapper(self, page, printing=True, amount=0.1):
-        page['freq'], page['colloc'] = analyze_page(page, printing=printing, amount=amount)
-
+    
+    def selection_wrapper(self, page):
         self.crawl_state['user_choice_stack'].append(page['title'])
         self.pointer['selection'] = page['title']
 
-        return self.page_wrapper(page)
+    # TODO: Fix frayed logic, printing should be separate. use parse_page instead.
+    def analyze_page_wrapper(self, page, printing=True, amount=0.1):
+        if isinstance(page, tuple):
+            logger.debug(f"Unpacked page tuple. {page}")
+            page = page[1]()
+
+        self.page_wrapper(page)
+        self.selection_wrapper(page)
+
+        return analyze_page(page, printing=printing, amount=amount)
+

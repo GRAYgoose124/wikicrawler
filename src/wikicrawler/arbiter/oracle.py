@@ -33,7 +33,7 @@ class Oracle:
                         "st found 0")
 
     # TODO: Oracle should compile a summarization of the crawl and user input.
-    def handle_oracle_cmd(self, command):
+    def parse_cmd(self, command):
         """
         Parse the command and return the function and arguments.
 

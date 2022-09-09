@@ -29,7 +29,7 @@ class WikiPrompt(WikiScriptEngine):
 
         logger.debug(f"Search: {topic}")
 
-        results = list(self.crawler.search(topic, soup=False, precache=self.search_precaching))
+        results = list(self.crawler.search(topic, precache=self.search_precaching))
 
         if len(results) == 1:
             self.analyze_page_wrapper(results[0], printing=interactive)
@@ -212,7 +212,7 @@ class WikiPrompt(WikiScriptEngine):
                         except (IndexError, ValueError):
                             amount = 1.0
 
-                        analyze_page_wrapper(self.crawl_state['pages'][self.pointer['selection']], amount=amount)
+                        self.analyze_page_wrapper(self.crawl_state['pages'][self.pointer['selection']], amount=amount)
                     except KeyError:
                         print("No selection to show.")
 

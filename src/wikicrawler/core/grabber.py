@@ -81,7 +81,7 @@ class WikiGrabber:
         page_struct.url = url
         return page_struct
 
-    def retrieve(self, url, page=None, soup=False):
+    def retrieve(self, url, page=None):
         # TODO: Add optional nodb keyword.
 
         if url in self.cacher:
@@ -113,12 +113,8 @@ class WikiGrabber:
         
         if self.cacher is not None:
             self.cacher.cache(wiki)
-        
-        # TODO: Remove frayed logic - just use fetch if we want page.
-        if soup:
-            return page
-        else:
-            return wiki
+           
+        return wiki
 
     # Wikipedia page parsing
     
@@ -137,7 +133,7 @@ class WikiGrabber:
                 links = {x.text: x['href'] for x in filter(None, [a if a['href'].startswith('/wiki') else None for a in pa.find_all('a')])}
                 paragraph_links.append(links)
         except (AttributeError, KeyError) as e:
-            logger.debug("Missing mw-parser-output - Is this even a wiki page?", exc_info=e)
+            logger.debug("Missing mw-parser-output - Is this even a wiki page?")
 
         return paragraphs, paragraph_links
 
@@ -162,7 +158,7 @@ class WikiGrabber:
         try:
             ref_body = content_text.select('.references')[0]
         except IndexError as e:
-            logger.debug(f"references", exc_info=e)
+            logger.debug(f"No references.")
             return references # Improperly formatted wiki pages, doesn't have .references.
 
         for child in ref_body.children:

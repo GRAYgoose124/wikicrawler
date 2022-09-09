@@ -51,7 +51,7 @@ class WikiSeeker(WikiGrabber):
 
         return links
 
-    def search(self, phrase, soup=False, precache=False):
+    def search(self, phrase, precache=False):
         search_url = f"{base_url}/wiki/Special:Search?search={urllib.parse.quote(phrase, safe='')}&"
 
         # retrieve search page results - may be disambig, wikipage, or other?
@@ -62,9 +62,9 @@ class WikiSeeker(WikiGrabber):
             for result in self.__speciallinks(results).values():
                 # pass a lambda to avoid pre-caching every result.
                 if not precache:
-                    yield (result, partial(self.retrieve, base_url + result, soup=soup))
+                    yield (result, partial(self.retrieve, base_url + result))
                 else:
-                    yield self.retrieve(base_url + result, soup=soup)
+                    yield self.retrieve(base_url + result)
 
         # handle disambiguation
         categories = self.__catlinks(results)
@@ -72,11 +72,11 @@ class WikiSeeker(WikiGrabber):
             for result in self.__disambiglinks(results).values():
                 # pass a lambda to avoid pre-caching every result.
                 if not precache:
-                    yield (result, partial(self.retrieve, base_url + result, soup=soup))
+                    yield (result, partial(self.retrieve, base_url + result))
                 else:
-                    yield self.retrieve(base_url + result, soup=soup)
+                    yield self.retrieve(base_url + result)
         else:
-            yield self.retrieve(results.url, page=results, soup=soup)
+            yield self.retrieve(results.url, page=results)
 
 
 if __name__ == '__main__':
