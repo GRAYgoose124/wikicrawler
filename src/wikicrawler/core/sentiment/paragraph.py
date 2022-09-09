@@ -15,6 +15,8 @@ from rich.console import Console
 from rich.color import Color
 from rich.highlighter import Highlighter
 
+from ..sentiment.utils.dict_add import add_dict
+
 
 console = Console()
 
@@ -33,48 +35,31 @@ blacklist = ['!', "'", ':', '_', '\\', ',', '.', '(', ')', '{', '}', '``', "''",
 def get_sentiments(sentences):
     sia = SentimentIntensityAnalyzer()
 
-    sscores = []
-    wscores = []
+    scores = []
     for sent in sentences:
         sent_score = sia.polarity_scores(sent)
 
         for word in nltk.word_tokenize(sent):
             word_score = sia.polarity_scores(word)
-
-            wscores.append((word, word_score))
-
-        sscores.append(sent_score)
-
-    return sscores, wscores
+            scores.append((word, add_dict(sent_score, word_score, 0.5)))
+     
+    return scores
 
 
 def print_sentiment(sentences):
-    sscores, wscores = get_sentiments(sentences)
-
     # avg_score = { 'neg': 0, 'neu': 0, 'pos': 0, 'compound': 0 }
-    for sent, score in zip(sentences, sscores):
-        # avg_score =  { 'neg': (avg_score['neg'] + score['neg']) * 0.5, 
-        #                'neu': (avg_score['neu'] + score['neu']) * 0.5, 
-        #                'pos': (avg_score['pos'] + score['pos']) * 0.5, 
-        #                'compound': (avg_score['compound'] + score['compound']) * 0.5}
-        
+    for word, score in get_sentiments(sentences):
         r = int(255*(score['neg']))
         g = int(255*(score['pos']))
         b = int(255*(score['neu']))
         c = int(127*(1+score['compound']))
 
-        for word, wscore in wscores:
-            r2 = int(0.33*(r+2.0*int(255*(wscore['neg']))))
-            g2 = int(0.33*(g+2.0*int(255*(wscore['pos']))))
-            b2 = int(0.33*(b+2.0*int(255*(wscore['neu']))))
-            c2 = int(0.33*(c+2.0*int(127*(1+wscore['compound']))))
-
-            console.print(word, sep=" ", end=" ", style=f"rgb({r2},{g2},{b2}) on rgb({c2},{c2},{c2})", highlight=False)
+        console.print(word, sep="", end=" ", style=f"rgb({r},{g},{b}) on rgb({c},{c},{c})", highlight=False)
     print()
 
 
 def parse_page(page, level):
-    body = " ".join(page['paragraphs'])
+    body = "".join(page['paragraphs'])
     sentences = nltk.sent_tokenize(body)
     words = nltk.word_tokenize(body)
     filtered_words = list(filter(lambda x: x.lower() not in blacklist and not x.isnumeric(), words))
@@ -103,7 +88,7 @@ def parse_page(page, level):
     return body, sentences, words, word_freq, collocs
 
 
-def analyze_page(page, level=2, printing=True):
+def analyze_page(page, amount=0.1, indices=None, level=2, printing=True):
     # todo: clean up use cases
     if not isinstance(page, tuple):
         body, sentences, words, word_freq, collocs = parse_page(page, level)
@@ -118,8 +103,19 @@ def analyze_page(page, level=2, printing=True):
         print_sentiment(sentences[:5])
 
         tp_idx = int(.33*len(sentences))
-        print("\t[bold red]30% + 10:[/bold red]")
-        print_sentiment(sentences[tp_idx:tp_idx+10])
+        if indices is not None:
+            tp_idx = indices[0]
+            tp_stop = indices[1]
+        else:
+            if isinstance(amount, float) and amount <= 1.0:
+                tp_stop = tp_idx + int(amount*len(sentences))
+            elif isinstance(amount, int):
+                tp_stop = tp_idx + amount
+            else:
+                tp_stop = tp_idx + 10
+
+        print(f"\t[bold red]30% + {amount}:[/bold red]")
+        print_sentiment(sentences[tp_idx:tp_stop])
 
         print("\t[bold red]Last 5:[/bold red]")
         print_sentiment(sentences[-5:])

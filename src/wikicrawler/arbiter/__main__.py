@@ -1,6 +1,7 @@
 import argparse
 import os
 import json
+import nltk
 import logging
 
 from ..core.crawler import WikiCrawler
@@ -16,6 +17,9 @@ logger = logging.getLogger(__name__)
 
 def main():
     config = init_config()
+
+    nltk.download('wordnet')
+    nltk.download('omw-1.4')
 
     with WikiCacher(config['db_file']) as wc:
         crawler = WikiCrawler(config['data_root'], 

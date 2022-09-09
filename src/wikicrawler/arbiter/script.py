@@ -20,7 +20,7 @@ class WikiScriptEngine:
 
         # TODO: cache oracle/crawl_states/paths maybe add crawl_state to oracle.
         self.crawl_state = {'user_choice_stack': [], 'page_stack': [], 'pop_stack': [], 'pages': {}, 'last_search': None}
-        self.pointer = { 'most_similar_colloc': None, 'selection': None}
+        self.pointer = { 'most_similar_colloc': None, 'selection': None, 'selected_text': None}
         
     def cmd_func_init(self, name):
         function = []

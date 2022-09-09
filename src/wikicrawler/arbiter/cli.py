@@ -5,7 +5,7 @@ from nltk.corpus import wordnet as wn
 from nltk.metrics.distance import jaro_winkler_similarity
 
 from ..core.crawler import WikiCrawler
-from ..core.sentiment.paragraph import analyze_page
+from ..core.sentiment.paragraph import analyze_page, print_sentiment
 
 from .oracle import Oracle
 from .utils.other import help_msg
@@ -20,10 +20,6 @@ logger = logging.getLogger(__name__)
 class WikiPrompt(WikiScriptEngine):
     def __init__(self, root_dir, crawler, search_precaching=False):
         super().__init__(search_precaching=search_precaching)
-
-        # TODO: move to app setup
-        nltk.download('wordnet')
-        nltk.download('omw-1.4')
 
         self.crawler = crawler
         self.oracle = Oracle(root_dir, self)
@@ -77,7 +73,6 @@ class WikiPrompt(WikiScriptEngine):
                     most_similar = (similarity, colloc)
 
             self.pointer['most_similar_colloc'] = most_similar[1]
-            print(f"Most similar collocation: {most_similar[1]}")
 
     def handle_state_seealso(self, state, idx):
         # st sa <idx>
@@ -121,8 +116,10 @@ class WikiPrompt(WikiScriptEngine):
                 print_results([f"\t{key}" for key in para.keys()], True)
 
     def handle_state_list(self, state, idx):
+        # st list
         if len(idx) == 0:
             print_results(self.crawl_state['pages'].keys(), True)
+        # st list <idx>
         else:
             try:
                 idx = int(idx[0])
@@ -132,8 +129,10 @@ class WikiPrompt(WikiScriptEngine):
                 pass
                         
     def handle_state_res(self, state, idx):
+        # st res
         if len(idx) == 0:
             print_results(self.crawl_state['last_search'], self.search_precaching)
+        # st res <idx>
         else:
             if len(self.crawl_state['last_search']) == 1:
                 page = self.crawl_state['last_search'][0]
@@ -168,11 +167,23 @@ class WikiPrompt(WikiScriptEngine):
                     self.crawl_state['pop_stack'].append(self.pointer['selection'])
                 case ['unpop']:
                     self.crawl_state['page_stack'].append(self.crawl_state['pop_stack'].pop())
-                case ['show']:
+                case ['show', *amount]:
                     try:
-                        analyze_page(self.crawl_state['pages'][self.pointer['selection']])
+                        try:
+                            amount = float(amount[0])
+                        except (IndexError, ValueError):
+                            amount = 1.0
+
+                        analyze_page(self.crawl_state['pages'][self.pointer['selection']], amount=amount)
                     except KeyError:
                         print("No selection to show.")
+
+                case ['sentences', start, stop]:
+                    paragraphs = "".join(self.crawl_state['pages'][self.pointer['selection']]['paragraphs'])
+                    sentences = nltk.sent_tokenize(paragraphs)
+
+                    self.pointer['selected_text'] = sentences[int(start):int(stop)]
+                    print_sentiment(self.pointer['selected_text'])
 
                 case _:
                     pass
