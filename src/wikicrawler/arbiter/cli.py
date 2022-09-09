@@ -18,10 +18,15 @@ logger = logging.getLogger(__name__)
 
 
 class WikiPrompt(WikiScriptEngine):
-    def __init__(self, root_dir, crawler, search_precaching=False):
+    def __init__(self, root_dir, crawler, search_precaching=False, cacher=None):
         super().__init__(root_dir, search_precaching=search_precaching)
 
         self.crawler = crawler
+
+        self.cacher = cacher
+        if cacher:
+            cacher.register_hook(self.save_state)
+
         self.oracle = Oracle(self)
     
     def handle_search(self, topic, interactive=True):
@@ -256,7 +261,11 @@ class WikiPrompt(WikiScriptEngine):
 
         pointer - print pointer
         state - print state
+
+        newf <name> - create new function
+
         help - print help
+        exit - exit cli
         """
         match command.split():
             case ['s', *phrase]: 

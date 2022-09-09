@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = 'wikicrawler'
-version = '0.0.5'
+version = '0.0.6'
 requires-python = ">=3.10"
 license = {text = "GPL3"}
 

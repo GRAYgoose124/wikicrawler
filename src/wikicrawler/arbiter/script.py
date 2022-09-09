@@ -17,7 +17,11 @@ logger = logging.getLogger(__name__)
 
 # TODO: Metaclass which defines match statement basd on method tree.
 class WikiScriptEngine:
-    def __init__(self, root_dir, search_precaching=False):
+    def __init__(self, root_dir, search_precaching=False, cacher=None):
+        self.cacher = cacher
+        if cacher is not None:
+            cacher.register_hook(self.save_state)
+
         self.search_precaching = search_precaching
 
         self.root_dir = root_dir 

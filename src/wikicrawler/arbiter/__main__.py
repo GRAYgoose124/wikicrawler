@@ -28,13 +28,13 @@ def main():
                                 save_media=config['save_media'], 
                             cacher=wc)
 
-        prompt = WikiPrompt(config['data_root'], crawler, search_precaching=config['search_precaching'])
+        prompt = WikiPrompt(config['data_root'], 
+                            crawler, 
+                            search_precaching=config['search_precaching'],
+                            cacher=wc)
 
         logger.info("Arbiter started, enjoy your tumble.")
         prompt.loop()
-
-        # TODO: Factor with WikiCacher.
-        prompt.save_state()
 
 
 if __name__ == '__main__':

@@ -19,4 +19,29 @@ Currently it has a simple command line interface which you can access through th
     pip install -e .
 
 ## 3. Run
+### Start
+To start the app run after install: (use a venv!)
+
     arbiter
+
+This will reveal a prompt, try the `help` and `st help`  command.
+
+    >
+
+### Typical workflows:
+
+#### Search
+    > s <phrase>
+    > st res [idx]      # no idx: list, idx: get
+    > st show [amount]      # float: percent, int: sentences
+#### Collocation traverse
+    > s <phrase>
+    > cmov <phrase>     # use most similar collocation in current page
+#### State
+    > st list [idx]     # page traversal history
+
+    > st res [idx]      # search travesal
+
+    > st pop
+    > st unpop
+

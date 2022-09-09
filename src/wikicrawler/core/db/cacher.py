@@ -7,6 +7,7 @@ from sqlalchemy.exc import NoResultFound
 class PageCacher:
     def __init__(self, db_path):
         self.manager = None
+        self.hooks = []
 
         if db_path is not None:
             self.db_path, self.db_name = db_path.rsplit('/', 1)
@@ -27,6 +28,9 @@ class PageCacher:
         self.manager.close()
         self.manager = None
 
+        for hook in self.hooks:
+            hook()
+
     def __contains__(self, url):
         try:
             self.manager.session.query(self.manager.Node).filter(self.manager.Node.url == url).one()
@@ -41,6 +45,9 @@ class PageCacher:
     def cache(self, page): 
         if self.manager is not None: 
             self.manager.session.merge(self.manager.Node(**page))
+
+    def register_hook(self, hook):
+        self.hooks.append(hook)
 
 
 class DBWikiPageEntry(DBPageEntry, Base):
