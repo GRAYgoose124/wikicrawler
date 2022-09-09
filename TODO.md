@@ -3,4 +3,5 @@
 - TODO: csv, pandas support
 - TODO: seer/markdown tree builder
 - TODO: crawler traversal support
-- TODO: arbiter/oracle state/path caching.
+- TODO: arbiter/oracle state/path caching. - sqlalchemy?
+- TODO: handle wiki list pages!

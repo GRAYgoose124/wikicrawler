@@ -32,6 +32,7 @@ def main():
 
         logger.info("Arbiter started, enjoy your tumble.")
         prompt.loop()
+        prompt.save_state()
 
 
 if __name__ == '__main__':

@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class WikiPrompt(WikiScriptEngine):
     def __init__(self, root_dir, crawler, search_precaching=False):
-        super().__init__(search_precaching=search_precaching)
+        super().__init__(root_dir, search_precaching=search_precaching)
 
         self.crawler = crawler
         self.oracle = Oracle(root_dir, self)
@@ -83,7 +83,7 @@ class WikiPrompt(WikiScriptEngine):
             page = self.crawler.retrieve(selection)
             self.analyze_page_wrapper(page)
         # st sa
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError, IndexError) as e:
             print_results(state['see_also'].keys(), True)
 
     def handle_state_links(self, state, idx):
@@ -108,12 +108,15 @@ class WikiPrompt(WikiScriptEngine):
                 idx = int(idx[0])
                 print_results(state['paragraph_links'][idx].keys(), True)
             except ValueError:
-                pass
+                logging.debug("Invalid index to paragraph link. Did you enter a number?")
         # st links - list
         else:
-            for idx, para in enumerate(state['paragraph_links']):
-                print(f"---\t{idx}\t---")
-                print_results([f"\t{key}" for key in para.keys()], True)
+            try:
+                for idx, para in enumerate(state['paragraph_links']):
+                    print(f"---\t{idx}\t---")
+                    print_results([f"\t{key}" for key in para.keys()], True)
+            except TypeError:
+                logging.debug('No paragraph links found. Is state set?')
 
     def handle_state_list(self, state, idx):
         # st list
@@ -144,6 +147,36 @@ class WikiPrompt(WikiScriptEngine):
             self.crawl_state['user_choice_stack'].append(page['title'])
 
     def handle_state(self, subcmd):
+        """
+        Handle state commands.
+        
+        st colloc <phrase> - get most similar collocation
+        st colloc - list collocations
+        
+        st sa <idx> - get see also page
+        st sa - list see also pages
+        
+        st links <pgidx> <idx> - get paragraph link
+        st links <idx> - list paragraph links
+        st links - list all paragraph links
+        
+        st list <idx> - get page from list
+        st list - list pages
+        
+        st res <idx> - get page from last search
+        st res - list last search
+        
+        st pop - pop page from stack
+        st unpop - unpop page from stack
+
+        st show - analyze current page
+        st show <amount> - analyze current page with <amount> of page. (float for percentage, int for number of sentences)
+
+        st sentences <start> <end> - analyze current page with sentences from <start> to <end>
+        
+        st most_similar_colloc - get most similar collocation
+
+        """
         try:
             state = self.crawl_state['pages'][self.crawl_state['page_stack'][-1]]
         except IndexError:
@@ -153,6 +186,7 @@ class WikiPrompt(WikiScriptEngine):
             match subcmd:
                 case ['colloc', *phrase]:
                     self.handle_state_colloc(state, phrase)
+
                 case ['sa', *idx]:
                     self.handle_state_seealso(state, idx)
                 case ['links', *idx]:
@@ -184,13 +218,36 @@ class WikiPrompt(WikiScriptEngine):
 
                     self.pointer['selected_text'] = sentences[int(start):int(stop)]
                     print_sentiment(self.pointer['selected_text'])
+                
+                case ['save']:
+                    self.save_state()
+                case ['del']:
+                    self.del_state()
+
+                case ['help']:
+                    print(self.handle_state.__doc__)
 
                 case _:
                     pass
         except (ValueError, IndexError) as e:
             logging.exception("Handle_state choice error.", exc_info=e)
 
-    def parse_cmd(self, command, interactive=True):
+    def parse_cmd(self, command, interactive=False):
+        """
+        Parse command and execute.
+
+        s <phrase> - search for phrase
+        u <url> - search for url
+        
+        st <subcmd> - handle state commands
+        oracle <subcmd> - handle oracle commands
+
+        cmov <phrase> - move to first page matched by phrase==collocations of current page.
+
+        pointer - print pointer
+        state - print state
+        help - print help
+        """
         match command.split():
             case ['s', *phrase]: 
                 if len(phrase) == 0:
@@ -207,6 +264,9 @@ class WikiPrompt(WikiScriptEngine):
             case ['cmov', *jump_phrase]:
                 self.handle_colloc_move(" ".join(jump_phrase))
 
+            case ['oracle', *cmd]:
+                self.oracle.parse_cmd(cmd)
+
             case ['pointer']:
                 print(self.pointer)
             case ['state']:
@@ -214,7 +274,7 @@ class WikiPrompt(WikiScriptEngine):
 
             case ['help']:
                 # TODO: Read from source.
-                print(*help_msg, sep='\n')
+                print(self.parse_cmd.__doc__, sep='\n')
             case ['exit']:
                 pass
 

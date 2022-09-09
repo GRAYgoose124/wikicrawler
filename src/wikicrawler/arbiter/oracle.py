@@ -1,3 +1,4 @@
+import logging
 import os
 
 
@@ -13,3 +14,7 @@ class Oracle():
         self.brain = None
 
     # TODO: Oracle should compile a summarization of the crawl and user input.
+    def parse_cmd(self, command):
+        match command:
+            case ['div']:
+                logging.debug('div proc')
