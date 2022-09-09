@@ -3,11 +3,11 @@ def print_results(results, precache):
         if isinstance(res, str):
             print(f"\t{idx}: {res}")
         elif 'title' in res and isinstance(res, dict):
-            print(f"{idx}: {res['title']}")
+            print(f"\t{idx}: {res['title']}")
         elif not precache: # TODO: Just check if list.
-            print(f"{idx}: {res[0]}")
+            print(f"\t{idx}: {res[0]}")
         else:
-            print(f"{idx}: {res}")
+            print(f"\t{idx}: {res}")
 
 def select_result(results, precache, index=None):
     if len(results) > 1:

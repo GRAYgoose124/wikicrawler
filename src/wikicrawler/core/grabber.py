@@ -1,3 +1,6 @@
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from functools import partial
+from multiprocessing import Pool
 import os
 import json
 import urllib
@@ -20,6 +23,16 @@ from .utils.model_to_dict import model_to_dict
 
 
 logger = logging.getLogger(__name__)
+
+
+def retrieve_wrapper(dl_url, save_loc):
+    try:
+        urllib.request.urlretrieve(dl_url, save_loc)
+    except (urllib.error.HTTPError, urllib.error.URLError) as e:
+        # logger.debug("Failed to download media. - Likely rate limited.")
+        sleep(5)
+        retrieve_wrapper(dl_url, save_loc)
+
 
 # TODO: make grabber asyncronous
 class WikiGrabber:
@@ -74,6 +87,7 @@ class WikiGrabber:
             return model_to_dict(self.cacher.get(url))
 
         if page is None:
+            # TODO: asyncronous?
             page = self.fetch(url)
 
         paragraphs, para_links = self.__paragraphs(page)
@@ -83,9 +97,7 @@ class WikiGrabber:
             nl2t = LatexNodes2Text().nodelist_to_text
             paragraphs = [nl2t(LatexWalker(paragraph).get_latex_nodes()[0]) for paragraph in paragraphs]
 
-        media_list = None
-        if self.save_media:
-            media_list = self.__get_media(page) 
+        media_list = self.__get_media(page) 
 
         wiki = { 'url': url, 
                 'title': page.find(id='firstHeading').get_text(), 
@@ -135,7 +147,7 @@ class WikiGrabber:
                 _, name = li.a.get_text().split(' ', 1)
                 links[name] = page.url + li.a.get('href')
         except AttributeError as e:
-            logger.debug("Missing toc?", exc_info=e)
+            logger.debug("Missing toc?")
 
         return links
 
@@ -168,7 +180,7 @@ class WikiGrabber:
         try:
             sa_soup = content_text.select('.div-col')[0]
         except IndexError as e:
-            logger.debug("No see also?", exc_info=e)
+            logger.debug("No see also?")
 
             return see_also
 
@@ -177,13 +189,14 @@ class WikiGrabber:
                 try:
                     see_also[a['title']] = "https://en.wikipedia.org" + a['href']
                 except KeyError as e:
-                    logger.debug(f"No title for see also link? {a}", exc_info=e)
+                    logger.debug(f"No title for see also link? {a}")
         return see_also
 
     def __get_media(self, page):
         save_locs = []
         dl_urls = []
 
+        logger.debug("Downloading page media... (This may take a moment.)")
         for img in page.find_all('a', attrs={'class': "image"}):
             url = 'https://en.wikipedia.org/' + img['href']
             # TODO: Fix worker thread blocking.
@@ -196,16 +209,23 @@ class WikiGrabber:
 
             if not save_loc.exists():
                 save_locs.append(str(save_loc))
+                dl_urls.append(dl_url)
 
-                # Download the media with workers. TODO: Handle with asyncio loop to avoid blocking caller.
-                try:
-                    t = threading.Thread(target=lambda: urllib.request.urlretrieve(dl_url, save_loc), daemon=True)
+        # Download the media with workers. TODO: Handle with asyncio loop to avoid blocking caller.
+        if self.save_media:
+            try:
+                # with Pool(len(dl_urls)) as p:
+                #     p.starmap(urllib.request.urlretrieve, zip(dl_urls, save_locs))
+                for dl_url, save_loc in zip(dl_urls, save_locs):
+                    p = partial(retrieve_wrapper, dl_url, save_loc)
+                    t = threading.Thread(target=p, daemon=True)
+                    logger.debug(f"Started downloading {dl_url}.")
                     t.start()
-                except urllib.error.HTTPError:
-                    logger.exception(f"Failed to download media from {dl_url}")
-                    sleep(1)
+            except urllib.error.HTTPError:
+                logger.debug(f"Failed to download media from {dl_url}")
+                sleep(1)
 
-        return save_locs
+        return dl_urls
 
 
 # ----------------------------------------------------------------

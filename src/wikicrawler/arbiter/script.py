@@ -25,42 +25,42 @@ class WikiScriptEngine:
         self.search_precaching = search_precaching
 
         self.root_dir = root_dir 
-        self.cli_dir = root_dir + '/data/cli'
-        if not os.path.exists(self.cli_dir):
-            os.makedirs(self.cli_dir)
+        self.prompt_dir = root_dir + '/prompt'
+        if not os.path.exists(self.prompt_dir):
+            os.makedirs(self.prompt_dir)
 
         # TODO: cache oracle/crawl_states/paths maybe add crawl_state to oracle.
-        if os.path.exists(self.cli_dir + '/crawl_state.json'):
-            with open(self.cli_dir + '/crawl_state.json', 'r') as f:
+        if os.path.exists(self.prompt_dir + '/crawl_state.json'):
+            with open(self.prompt_dir + '/crawl_state.json', 'r') as f:
                 self.crawl_state = json.load(f)
         else:
             self.crawl_state = {'user_choice_stack': [], 'page_stack': [], 'pop_stack': [], 'pages': {}, 'last_search': None}
         
-        if os.path.exists(self.cli_dir + '/function_cache.json'):
-            with open(self.cli_dir + '/function_cache.json', 'r') as f:
+        if os.path.exists(self.prompt_dir + '/function_cache.json'):
+            with open(self.prompt_dir + '/function_cache.json', 'r') as f:
                 self.functions = json.load(f)
         else:
             self.functions = {}
 
-        if os.path.exists(self.cli_dir + '/pointer.json'):
-            with open(self.cli_dir + '/pointer.json', 'r') as f:
-                self.pointer = json.load(f)
+        if os.path.exists(self.prompt_dir + '/pointer.json'):
+            with open(self.prompt_dir + '/pointer.json', 'r') as f:
+                    self.pointer = json.load(f)
         else:
             self.pointer = { 'most_similar_colloc': None, 'selection': None, 'selected_text': None}
-    
+        
     # TODO: Use PageCacher to call this.
     def del_state(self):
         self.crawl_state = {'user_choice_stack': [], 'page_stack': [], 'pop_stack': [], 'pages': {}, 'last_search': None}
         self.pointer = { 'most_similar_colloc': None, 'selection': None, 'selected_text': None}
 
-        with open(self.cli_dir + '/crawl_state.json', 'w') as f:
+        with open(self.prompt_dir + '/crawl_state.json', 'w') as f:
             json.dump(self.crawl_state, f)
 
-        with open(self.cli_dir + '/pointer.json', 'w') as f:
+        with open(self.prompt_dir + '/pointer.json', 'w') as f:
             json.dump(self.pointer, f)
 
     def save_state(self):
-        with open(self.cli_dir + '/crawl_state.json', 'w') as f:
+        with open(self.prompt_dir + '/crawl_state.json', 'w') as f:
             # TODO: make last search just have links in the first place?
             # Removing so partials don't cause a problem. TODO: See above. Need to refactor to remove partials completely.
             if isinstance(self.crawl_state['last_search'][0], tuple):
@@ -68,10 +68,10 @@ class WikiScriptEngine:
             
             json.dump(self.crawl_state, f)
         
-        with open(self.cli_dir + '/function_cache.json', 'w') as f:
+        with open(self.prompt_dir + '/function_cache.json', 'w') as f:
             json.dump(self.functions, f)
 
-        with open(self.cli_dir + '/pointer.json', 'w') as f:
+        with open(self.prompt_dir + '/pointer.json', 'w') as f:
             json.dump(self.pointer, f)
 
     def cmd_func_init(self, name, lines=None):
@@ -134,8 +134,10 @@ class WikiScriptEngine:
         return page['freq'], page['colloc']
 
     # TODO: Fix frayed logic, printing should be separate. use parse_page instead.
-    def analyze_page_wrapper(self, page, printing=True):
-        page['freq'], page['colloc'] = analyze_page(page, printing=printing)
+    def analyze_page_wrapper(self, page, printing=True, amount=0.1):
+        page['freq'], page['colloc'] = analyze_page(page, printing=printing, amount=amount)
+
+        self.crawl_state['user_choice_stack'].append(page['title'])
         self.pointer['selection'] = page['title']
 
         return self.page_wrapper(page)

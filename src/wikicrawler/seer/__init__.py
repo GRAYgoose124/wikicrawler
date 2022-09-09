@@ -1,0 +1,1 @@
+from wikicrawler.seer.__main__ import main

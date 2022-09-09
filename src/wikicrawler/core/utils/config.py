@@ -26,6 +26,6 @@ def init_config():
                     'save_media': True  }
 
         with open(config_file, "w") as f:
-            json.dump(config, f)
+            json.dump(config, f, indent=2)
 
     return config

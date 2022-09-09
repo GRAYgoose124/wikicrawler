@@ -22,8 +22,7 @@ class WikiPrompt(WikiScriptEngine):
         super().__init__(root_dir, search_precaching=search_precaching, cacher=cacher)
 
         self.crawler = crawler
-
-        self.oracle = Oracle(self)
+        self.oracle = Oracle(self, cacher=cacher)
     
     def handle_search(self, topic, interactive=True):
         if topic == 'most_similar_colloc':
@@ -35,7 +34,6 @@ class WikiPrompt(WikiScriptEngine):
 
         if len(results) == 1:
             self.analyze_page_wrapper(results[0], printing=interactive)
-            self.pointer['selection'] = results[0]['title']
 
         self.crawl_state['last_search'] = results
 
@@ -110,7 +108,7 @@ class WikiPrompt(WikiScriptEngine):
             except TypeError as e:
                 logger.debug(f'No paragraph links found. Is state set? {state}', exc_info=e)
 
-    def handle_state_list(self, state, idx):
+    def handle_state_hist(self, state, idx):
         # st list
         if len(idx) == 0:
             print_results(self.crawl_state['pages'].keys(), True)
@@ -123,7 +121,7 @@ class WikiPrompt(WikiScriptEngine):
             except ValueError as e:
                 logger.debug("Invalid index to page list.", exc_info=e)
                         
-    def handle_state_res(self, state, idx):
+    def handle_state_found(self, state, idx):
         # st res
         if len(idx) == 0:
             print_results(self.crawl_state['last_search'], self.search_precaching)
@@ -139,7 +137,6 @@ class WikiPrompt(WikiScriptEngine):
                     page = self.conditional_idx_selector(idx)
 
             self.analyze_page_wrapper(page)
-            self.crawl_state['user_choice_stack'].append(page['title'])
 
     def handle_state(self, subcmd):
         """
@@ -191,9 +188,9 @@ class WikiPrompt(WikiScriptEngine):
                 case ['links', *idx]:
                     self.handle_state_links(state, idx)
                 case ['hist', *idx]:
-                    self.handle_state_list(state, idx)
+                    self.handle_state_hist(state, idx)
                 case ['found', *idx]:
-                    self.handle_state_res(state, idx)
+                    self.handle_state_found(state, idx)
 
                 case ['pop']:
                     self.pointer['selection'] = self.crawl_state['page_stack'].pop()
@@ -207,7 +204,7 @@ class WikiPrompt(WikiScriptEngine):
                         except (IndexError, ValueError):
                             amount = 1.0
 
-                        analyze_page(self.crawl_state['pages'][self.pointer['selection']], amount=amount)
+                        analyze_page_wrapper(self.crawl_state['pages'][self.pointer['selection']], amount=amount)
                     except KeyError:
                         print("No selection to show.")
 
@@ -227,7 +224,8 @@ class WikiPrompt(WikiScriptEngine):
                     print(self.handle_state.__doc__)
 
                 case _:
-                    pass
+                    return False
+            return True
         except (ValueError, IndexError) as e:
             logging.exception("Handle_state choice error.", exc_info=e)
 
@@ -252,10 +250,8 @@ class WikiPrompt(WikiScriptEngine):
         """
         match command.split():
             case ['s', *phrase]: 
-                if len(phrase) == 0:
-                    return
-
-                self.handle_search(" ".join(phrase), interactive=interactive)
+                if len(phrase) != 0:
+                    self.handle_search(" ".join(phrase), interactive=interactive)
 
             case ['u', url]:
                 self.handle_url(url)
@@ -282,3 +278,5 @@ class WikiPrompt(WikiScriptEngine):
 
             case _: 
                 print(f"Unknown command: {command}")
+                return False
+        return True

@@ -18,6 +18,7 @@ dependencies = [
 
 [project.scripts]
 arbiter = "wikicrawler.arbiter:main"
+seer = "wikicrawler.seer:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

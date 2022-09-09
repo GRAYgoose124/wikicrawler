@@ -15,4 +15,5 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 if __name__ == '__main__':
+    # TODO: argparse commands/entries into sub-modules
     pass
