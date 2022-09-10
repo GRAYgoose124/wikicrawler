@@ -18,14 +18,15 @@ logger = logging.getLogger(__name__)
 
 class WikiPrompt(WikiScriptEngine):
     def __init__(self, config, crawler, cacher=None):
-        super().__init__(config, cacher=cacher)
+        super().__init__(config, crawler, cacher=cacher)
 
-        self.crawler = crawler
         self.oracle = Oracle(self, cacher=cacher)
     
     def handle_search(self, topic, interactive=True):
         if topic == 'most_similar_colloc':
             topic = self.pointer['most_similar_colloc']
+        elif topic == 'most_similar_freq':
+            topic = self.pointer['most_similar_freq']
 
         logger.debug(f"Search: {topic}")
 
@@ -55,7 +56,8 @@ class WikiPrompt(WikiScriptEngine):
 
             most_similar = (0.0, None)
             for colloc in state['stats']['collocations']:
-                colloc = "".join(colloc)
+                print(colloc)
+                colloc = " ".join(colloc)
                 similarity = jaro_winkler_similarity(colloc, phrase) 
 
                 if similarity > most_similar[0]:
@@ -63,6 +65,25 @@ class WikiPrompt(WikiScriptEngine):
 
             self.pointer['most_similar_colloc'] = most_similar[1]
             logger.debug(f"Most similar collocation: {most_similar[1]}")
+
+    def handle_state_freq(self, state, phrase):
+        # st freq
+        if len(phrase) == 0:
+            print_results(state['stats']['frequencies'])
+        # st freq <phrase>
+        else:
+            phrase = " ".join(phrase)
+
+            most_similar = (0.0, None)
+            for freq in state['stats']['frequencies']:
+                freq = "".join(freq)
+                similarity = jaro_winkler_similarity(freq, phrase) 
+
+                if similarity > most_similar[0]:
+                    most_similar = (similarity, freq)
+
+            self.pointer['most_similar_freq'] = most_similar[1]
+            logger.debug(f"Most similar frequency: {most_similar[1]}")
 
     def handle_state_seealso(self, state, idx):
         # st sa <idx>
@@ -123,6 +144,9 @@ class WikiPrompt(WikiScriptEngine):
                         
     def handle_state_found(self, state, idx):
         # st found
+        if self.crawl_state['last_search'] is None:
+            return
+            
         if len(idx) == 0:
             if isinstance(self.crawl_state['last_search'], dict):
                 last_search = list(self.crawl_state['last_search'].keys())
@@ -135,16 +159,8 @@ class WikiPrompt(WikiScriptEngine):
             if len(self.crawl_state['last_search']) == 1:
                 page = self.crawl_state['last_search'][0]
             elif len(idx) >= 1:
-                try:
-                    page = self.crawl_state['last_search'][int(idx[0])]
-                    if isinstance(page, str):
-                        page = self.crawler.retrieve(page)
-                    elif isinstance(page, tuple):
-                        page = page[1]()
-            
-                except ValueError:
-                    pass
-
+                page = self.crawl_state['last_search'][int(idx[0])]
+        
             self.analyze_page_wrapper(page)
 
     def handle_state(self, subcmd):
@@ -172,6 +188,7 @@ class WikiPrompt(WikiScriptEngine):
 
         st show - analyze current page
         st show <amount> - analyze current page with <amount> of page. (float for percentage, int for number of sentences)
+        st current - show current page title
 
         st sentences <start> <end> - analyze current page with sentences from <start> to <end>
         
@@ -191,6 +208,8 @@ class WikiPrompt(WikiScriptEngine):
             match subcmd:
                 case ['colloc', *phrase]:
                     self.handle_state_colloc(state, phrase)
+                case ['freq', *phrase]:
+                    self.handle_state_freq(state, phrase)
 
                 case ['sa', *idx]:
                     self.handle_state_seealso(state, idx)

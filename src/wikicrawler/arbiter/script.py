@@ -15,8 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class WikiScriptEngine:
-    def __init__(self, config, cacher=None):
+    def __init__(self, config, crawler, cacher=None):
         self.config = config
+
+        self.crawler = crawler
         self.cacher = cacher
         if cacher is not None:
             cacher.register_hook(self.save_state)
@@ -63,11 +65,11 @@ class WikiScriptEngine:
             with open(self.prompt_dir + f'/{filename}.json', 'r') as f:
                     self.pointer = json.load(f)
         else:
-            self.pointer = { 'most_similar_colloc': None, 'selection': None, 'selected_text': None}
+            self.pointer = { 'most_similar_freq': None, 'most_similar_colloc': None, 'selection': None, 'selected_text': None}
         
     def reset_state(self):
         self.crawl_state = {'user_choice_stack': [], 'page_stack': [], 'pop_stack': [], 'pages': {}, 'last_search': None}
-        self.pointer = { 'most_similar_colloc': None, 'selection': None, 'selected_text': None}
+        self.pointer = { 'most_similar_freq': None, 'most_similar_colloc': None, 'selection': None, 'selected_text': None}
 
     def del_state(self):
         self.reset_state()
@@ -87,11 +89,8 @@ class WikiScriptEngine:
 
                 # TODO: make last search just have links in the first place?
                 # Removing so partials don't cause a problem. TODO: See above. Need to refactor to remove partials completely.
-                if self.crawl_state['last_search'] is not None and isinstance(self.crawl_state['last_search'][0], tuple):
-                    try:
-                        self.crawl_state['last_search'] = [(e[0], e[1].args[0]) if isinstance(e[1], partial) else (e[0], e[1]) for e in self.crawl_state['last_search']]
-                    except KeyError as e:
-                        logger.debug(f"last_search: {self.crawl_state['last_search']}", exc_info=e)
+                #if self.crawl_state['last_search'] is not None and isinstance(self.crawl_state['last_search'][0], tuple):
+                self.crawl_state['last_search'] = None
             
                 json.dump(self.crawl_state, f, indent=2)
             
@@ -166,10 +165,17 @@ class WikiScriptEngine:
 
     # TODO: Fix frayed logic, printing should be separate. use parse_page instead.
     def analyze_page_wrapper(self, page, printing=True, amount=0.1):
-        if isinstance(page, Callable):
-            logger.debug(f"Unpacked page tuple. {page}")
-            page = page()
-        
+        try:
+            if isinstance(page, Callable):
+                logger.debug(f"Unpacked page tuple. {page}")
+                page = page()
+            elif isinstance(page, tuple):
+                page = page[1]()
+            elif isinstance(page, str):
+                page = self.crawler.retrieve(page)
+        except Exception as e:
+            logger.debug(exc_info=e)
+                
         body, sentences, words, collocations, freq = analyze_page(page, printing=printing, amount=amount)
 
         if 'stats' not in page:
