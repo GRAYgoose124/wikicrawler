@@ -56,7 +56,6 @@ class WikiPrompt(WikiScriptEngine):
 
             most_similar = (0.0, None)
             for colloc in state['stats']['collocations']:
-                print(colloc)
                 colloc = " ".join(colloc)
                 similarity = jaro_winkler_similarity(colloc, phrase) 
 
@@ -95,7 +94,7 @@ class WikiPrompt(WikiScriptEngine):
             self.analyze_page_wrapper(page)
         # st sa
         except (ValueError, TypeError, IndexError) as e:
-            print_results(list(state['see_also'].keys()), True)
+            print_results(list(state['see_also'].keys()))
 
     def handle_state_links(self, state, idx):
         # st links <pgidx> <idx> - get
@@ -117,7 +116,7 @@ class WikiPrompt(WikiScriptEngine):
         elif len(idx) == 1:
             try:
                 idx = int(idx[0])
-                print_results(state['paragraph_links'][idx].keys())
+                print_results(list(state['paragraph_links'][idx].keys()))
             except ValueError:
                 logger.debug("Invalid index to paragraph link. Did you enter a number?")
         # st links - list
@@ -125,6 +124,8 @@ class WikiPrompt(WikiScriptEngine):
             try:
                 for idx, para in enumerate(state['paragraph_links']):
                     print(f"---\t{idx}\t---")
+                    if len(para) == 0:
+                        continue
                     print_results(list(para.keys()))
             except TypeError as e:
                 logger.debug(f'No paragraph links found. Is state set? {state}', exc_info=e)
@@ -146,7 +147,7 @@ class WikiPrompt(WikiScriptEngine):
         # st found
         if self.crawl_state['last_search'] is None:
             return
-            
+
         if len(idx) == 0:
             if isinstance(self.crawl_state['last_search'], dict):
                 last_search = list(self.crawl_state['last_search'].keys())
@@ -170,6 +171,9 @@ class WikiPrompt(WikiScriptEngine):
         st colloc <phrase> - get most similar collocation
         st colloc - list collocations
         
+        st freq <phrase> - get most similar frequency
+        st freq - list frequencies
+
         st sa <idx> - get see also page
         st sa - list see also pages
         
@@ -200,7 +204,7 @@ class WikiPrompt(WikiScriptEngine):
         st help - print this message
         """
         try:
-            state = self.crawl_state['pages'][self.crawl_state['page_stack'][-1]]
+            state = self.crawl_state['pages'][self.pointer['selection']]
         except IndexError:
             state = None
 
@@ -269,7 +273,6 @@ class WikiPrompt(WikiScriptEngine):
         
         st <subcmd> - handle state commands
         ora <subcmd> - handle oracle commands
-
 
         pointer - print pointer
         state - print state

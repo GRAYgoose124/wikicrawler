@@ -174,7 +174,7 @@ class WikiScriptEngine:
             elif isinstance(page, str):
                 page = self.crawler.retrieve(page)
         except Exception as e:
-            logger.debug(exc_info=e)
+            logger.debug("uh?", exc_info=e)
                 
         body, sentences, words, collocations, freq = analyze_page(page, printing=printing, amount=amount)
 
