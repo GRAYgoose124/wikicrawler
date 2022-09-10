@@ -5,8 +5,10 @@ from .db.cacher import WikiCacher
 
 
 class WikiCrawler(WikiSeeker):
-    def traverse(self, url):
+    def traverse(self, start_page, tags):
         path = []
+        
+        # href traversal
 
 
 if __name__ == '__main__':

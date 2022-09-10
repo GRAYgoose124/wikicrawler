@@ -1,12 +1,12 @@
-from curses import wrapper
+from functools import partial
 import json
 import logging
 import os
-
 # For command history
 import readline
 
 from io import TextIOWrapper
+from typing import Callable
 
 from ..core.sentiment.paragraph import analyze_page
 
@@ -14,64 +14,94 @@ from ..core.sentiment.paragraph import analyze_page
 logger = logging.getLogger(__name__)
 
 
-# TODO: Metaclass which defines match statement basd on method tree.
 class WikiScriptEngine:
-    def __init__(self, root_dir, search_precaching=False, cacher=None):
+    def __init__(self, config, cacher=None):
+        self.config = config
         self.cacher = cacher
         if cacher is not None:
             cacher.register_hook(self.save_state)
 
-        self.search_precaching = search_precaching
+        self.search_precaching = config['search_precaching']
 
-        self.root_dir = root_dir 
-        self.prompt_dir = root_dir + '/prompt'
+        self.root_dir = config['data_root']
+        self.prompt_dir = self.root_dir + '/prompt'
         if not os.path.exists(self.prompt_dir):
             os.makedirs(self.prompt_dir)
 
-        # TODO: cache oracle/crawl_states/paths maybe add crawl_state to oracle.
-        if os.path.exists(self.prompt_dir + '/crawl_state.json'):
-            with open(self.prompt_dir + '/crawl_state.json', 'r') as f:
+        if config['prompt_state'] is not None:
+            filename = config['prompt_state']
+        else:
+            filename = 'crawl_state'
+            config['prompt_state'] = filename
+
+        if os.path.exists(self.prompt_dir + f'/{filename}.json'):
+            with open(self.prompt_dir + f"/{filename}.json", 'r') as f:
                 self.crawl_state = json.load(f)
         else:
             self.crawl_state = {'user_choice_stack': [], 'page_stack': [], 'pop_stack': [], 'pages': {}, 'last_search': None}
-        
-        if os.path.exists(self.prompt_dir + '/function_cache.json'):
-            with open(self.prompt_dir + '/function_cache.json', 'r') as f:
+      
+        if config['functions_cache'] is not None:
+            filename = config['functions_cache']
+        else:
+            filename = 'functions_cache'  
+            config['functions_cache'] = filename
+
+        if os.path.exists(self.prompt_dir + f'/{filename}.json'):
+            with open(self.prompt_dir + f'/{filename}.json', 'r') as f:
                 self.functions = json.load(f)
         else:
             self.functions = {}
 
-        if os.path.exists(self.prompt_dir + '/pointer.json'):
-            with open(self.prompt_dir + '/pointer.json', 'r') as f:
+        if config['pointer_state'] is not None:
+            filename = config['pointer_state']
+        else:
+            filename = 'pointer'
+
+            config['pointer_state'] = filename
+
+        if os.path.exists(self.prompt_dir + f'/{filename}.json'):
+            with open(self.prompt_dir + f'/{filename}.json', 'r') as f:
                     self.pointer = json.load(f)
         else:
             self.pointer = { 'most_similar_colloc': None, 'selection': None, 'selected_text': None}
         
-    # TODO: Use PageCacher to call this.
-    def del_state(self):
+    def reset_state(self):
         self.crawl_state = {'user_choice_stack': [], 'page_stack': [], 'pop_stack': [], 'pages': {}, 'last_search': None}
         self.pointer = { 'most_similar_colloc': None, 'selection': None, 'selected_text': None}
 
-        with open(self.prompt_dir + '/crawl_state.json', 'w') as f:
+    def del_state(self):
+        self.reset_state()
+
+        with open(self.prompt_dir + f"/{self.config['prompt_state']}.json", 'w') as f:
             json.dump(self.crawl_state, f)
 
-        with open(self.prompt_dir + '/pointer.json', 'w') as f:
+        with open(self.prompt_dir + f"/{self.config['pointer_state']}.json", 'w') as f:
             json.dump(self.pointer, f)
 
     def save_state(self):
-        with open(self.prompt_dir + '/crawl_state.json', 'w') as f:
-            # TODO: make last search just have links in the first place?
-            # Removing so partials don't cause a problem. TODO: See above. Need to refactor to remove partials completely.
-            if isinstance(self.crawl_state['last_search'][0], tuple):
-                self.crawl_state['last_search'] = [e[1].args[0] for e in self.crawl_state['last_search']]
-            
-            json.dump(self.crawl_state, f)
-        
-        with open(self.prompt_dir + '/function_cache.json', 'w') as f:
-            json.dump(self.functions, f)
+        try:
+            with open(self.prompt_dir + f"/{self.config['prompt_state']}.json", 'w') as f:
+                if not hasattr(self, 'crawl_state'):
+                    logger.error('crawl_state not defined - crash?')
+                    return
 
-        with open(self.prompt_dir + '/pointer.json', 'w') as f:
-            json.dump(self.pointer, f)
+                # TODO: make last search just have links in the first place?
+                # Removing so partials don't cause a problem. TODO: See above. Need to refactor to remove partials completely.
+                if self.crawl_state['last_search'] is not None and isinstance(self.crawl_state['last_search'][0], tuple):
+                    try:
+                        self.crawl_state['last_search'] = [(e[0], e[1].args[0]) if isinstance(e[1], partial) else (e[0], e[1]) for e in self.crawl_state['last_search']]
+                    except KeyError as e:
+                        logger.debug(f"last_search: {self.crawl_state['last_search']}", exc_info=e)
+            
+                json.dump(self.crawl_state, f, indent=2)
+            
+            with open(self.prompt_dir + f"/{self.config['functions_cache']}.json", 'w') as f:
+                json.dump(self.functions, f, indent=2)
+
+            with open(self.prompt_dir + f"/{self.config['pointer_state']}.json", 'w') as f:
+                json.dump(self.pointer, f, indent=2)
+        except FileNotFoundError as e:
+            logger.debug("Files probably deleted while system was running", exc_info=e)
 
     def cmd_func_init(self, name, lines=None):
         function = []
@@ -136,12 +166,19 @@ class WikiScriptEngine:
 
     # TODO: Fix frayed logic, printing should be separate. use parse_page instead.
     def analyze_page_wrapper(self, page, printing=True, amount=0.1):
-        if isinstance(page, tuple):
+        if isinstance(page, Callable):
             logger.debug(f"Unpacked page tuple. {page}")
-            page = page[1]()
+            page = page()
+        
+        body, sentences, words, collocations, freq = analyze_page(page, printing=printing, amount=amount)
+
+        if 'stats' not in page:
+            page['stats'] = {}
+    
+        page['stats']['collocations'] = collocations
+        page['stats']['frequencies'] = freq
 
         self.page_wrapper(page)
         self.selection_wrapper(page)
 
-        return analyze_page(page, printing=printing, amount=amount)
-
+        return body, sentences, words, collocations, freq

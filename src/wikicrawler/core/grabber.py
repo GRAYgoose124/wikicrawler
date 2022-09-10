@@ -40,20 +40,17 @@ class WikiGrabber:
     link_regex = re.compile("^https*://.*\..*")
     header_regex = re.compile('^h[1-6]$')
 
-    def __init__(self, root_dir, convert_latex=True, media_folder=None, save_media=True, cacher=None):
+    def __init__(self, config, cacher=None):
+        self.config = config
         self.cacher = cacher
 
-        self.convert_latex = convert_latex
-        self.save_media = save_media
-        self.process_media_links = save_media
-
-        if media_folder is not None:
-            self.media_save_location = media_folder
-        else:
-            self.media_save_location = root_dir + '/data/images'
-
-        if not os.path.exists(root_dir):
-            os.makedirs(root_dir)
+        self.convert_latex = config['latex']
+        self.save_media = config['save_media']
+        self.process_media_links = config['process_media_links']
+        self.media_save_location = config['data_root'] + config['media_folder']
+    
+        if not os.path.exists(config['data_root']):
+            os.makedirs(config['data_root'])
 
         if self.save_media and not os.path.exists(self.media_save_location):
             os.makedirs(self.media_save_location)
@@ -130,7 +127,7 @@ class WikiGrabber:
                 if text != '' and text != '\n':
                     paragraphs.append(text)
 
-                links = {x.text: x['href'] for x in filter(None, [a if a['href'].startswith('/wiki') else None for a in pa.find_all('a')])}
+                links = {x.text: "https://en.wikipedia.org" + x['href'] for x in filter(None, [a if a['href'].startswith('/wiki') else None for a in pa.find_all('a')])}
                 paragraph_links.append(links)
         except (AttributeError, KeyError) as e:
             logger.debug("Missing mw-parser-output - Is this even a wiki page?")

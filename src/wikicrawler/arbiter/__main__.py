@@ -1,6 +1,3 @@
-import argparse
-import os
-import json
 import nltk
 import logging
 
@@ -21,17 +18,9 @@ def main():
     nltk.download('wordnet')
     nltk.download('omw-1.4')
 
-    with WikiCacher(config['db_file']) as wc:
-        crawler = WikiCrawler(config['data_root'], 
-                                convert_latex=config['latex'], 
-                                media_folder=config['media_folder'], 
-                                save_media=config['save_media'], 
-                            cacher=wc)
-
-        prompt = WikiPrompt(config['data_root'], 
-                            crawler, 
-                            search_precaching=config['search_precaching'],
-                            cacher=wc)
+    with WikiCacher(config) as wc:
+        crawler = WikiCrawler(config, cacher=wc)
+        prompt = WikiPrompt(config, crawler, cacher=wc)
 
         logger.info("Arbiter started, enjoy your tumble.")
         prompt.loop()

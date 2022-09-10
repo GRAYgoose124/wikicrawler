@@ -64,7 +64,7 @@ class WikiSeeker(WikiGrabber):
                 if not precache:
                     yield (result, partial(self.retrieve, base_url + result))
                 else:
-                    yield self.retrieve(base_url + result)
+                    yield (result, self.retrieve(base_url + result))
 
         # handle disambiguation
         categories = self.__catlinks(results)
@@ -74,9 +74,9 @@ class WikiSeeker(WikiGrabber):
                 if not precache:
                     yield (result, partial(self.retrieve, base_url + result))
                 else:
-                    yield self.retrieve(base_url + result)
+                    yield (result, self.retrieve(base_url + result))
         else:
-            yield self.retrieve(results.url, page=results)
+            yield (None, self.retrieve(results.url, page=results))
 
 
 if __name__ == '__main__':

@@ -31,6 +31,7 @@ class Oracle:
         self.prompt.run_script(f"st colloc {jump_phrase}",
                         f"s most_similar_colloc",
                         "st found 0")
+        logger.debug(f"cmov proc: {jump_phrase}, {self.prompt.pointer['most_similar_colloc']}, {self.prompt.crawl_state['last_search'][0]}")
 
     # TODO: Oracle should compile a summarization of the crawl and user input.
     def parse_cmd(self, command):

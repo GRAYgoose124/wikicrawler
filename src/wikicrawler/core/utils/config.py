@@ -19,11 +19,15 @@ def init_config():
             config = json.load(f)
     else:
         config = {  'data_root': data_root,
-                    'media_folder': data_root + '/images',
-                    'db_file': data_root +'/databases/arbiter.db',
+                    'media_folder': '/images',
+                    'db_file': '/arbiter.db',
                     'search_precaching': False,
                     'latex': True,
-                    'save_media': True  }
+                    'save_media': False,
+                    'process_media_links': False,
+                    'prompt_state': None,
+                    'pointer_state': None,
+                    'functions_cache': None}
 
         with open(config_file, "w") as f:
             json.dump(config, f, indent=2)

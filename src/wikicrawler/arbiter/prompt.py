@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 class WikiPrompt(WikiScriptEngine):
-    def __init__(self, root_dir, crawler, search_precaching=False, cacher=None):
-        super().__init__(root_dir, search_precaching=search_precaching, cacher=cacher)
+    def __init__(self, config, crawler, cacher=None):
+        super().__init__(config, cacher=cacher)
 
         self.crawler = crawler
         self.oracle = Oracle(self, cacher=cacher)
@@ -32,7 +32,7 @@ class WikiPrompt(WikiScriptEngine):
         results = list(self.crawler.search(topic, precache=self.search_precaching))
 
         if len(results) == 1:
-            self.analyze_page_wrapper(results[0], printing=interactive)
+            self.analyze_page_wrapper(results[0][1], printing=interactive)
 
         self.crawl_state['last_search'] = results
 
@@ -48,20 +48,21 @@ class WikiPrompt(WikiScriptEngine):
     def handle_state_colloc(self, state, phrase):
         # st colloc
         if len(phrase) == 0:
-            print_results(state['colloc'])
+            print_results(state['stats']['collocations'])
         # st colloc <phrase>
         else:
             phrase = " ".join(phrase)
 
             most_similar = (0.0, None)
-            for colloc in state['colloc']:
-                colloc = " ".join(colloc)
+            for colloc in state['stats']['collocations']:
+                colloc = "".join(colloc)
                 similarity = jaro_winkler_similarity(colloc, phrase) 
 
                 if similarity > most_similar[0]:
                     most_similar = (similarity, colloc)
 
             self.pointer['most_similar_colloc'] = most_similar[1]
+            logger.debug(f"Most similar collocation: {most_similar[1]}")
 
     def handle_state_seealso(self, state, idx):
         # st sa <idx>
@@ -88,7 +89,7 @@ class WikiPrompt(WikiScriptEngine):
 
             selection = list(state['paragraph_links'][pgidx].values())[idx]
 
-            page = self.crawler.retrieve("https://en.wikipedia.org" + selection)
+            page = self.crawler.retrieve(selection)
 
             self.analyze_page_wrapper(page)
         # st links <idx> - equivalent to st links -1 <idx>
@@ -205,6 +206,9 @@ class WikiPrompt(WikiScriptEngine):
                     self.crawl_state['pop_stack'].append(self.pointer['selection'])
                 case ['unpop']:
                     self.crawl_state['page_stack'].append(self.crawl_state['pop_stack'].pop())
+
+                case ['current']:
+                    print(self.pointer['selection'])
                 case ['show', *amount]:
                     try:
                         try:

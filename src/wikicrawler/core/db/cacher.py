@@ -5,19 +5,15 @@ from sqlalchemy.exc import NoResultFound
 
 
 class PageCacher:
-    def __init__(self, db_path):
+    def __init__(self, config):
+        self.config = config
         self.manager = None
         self.hooks = []
 
-        if db_path is not None:
-            self.db_path, self.db_name = db_path.rsplit('/', 1)
-        else:
-            self.db_path, self.db_name = os.getcwd() + '/data/databases', 'database.db'
+        self.db_path = config['data_root'] + f"/databases/{config['db_file']}"
 
-        # splitting to remove db name from path
-        db_root = db_path.rsplit(os.path.sep, 1)[0]
-        if not os.path.exists(db_root):
-            os.makedirs(db_root)
+        if not os.path.exists(config['data_root'] + "/databases"):
+            os.makedirs(config['data_root'] + "/databases")
 
     def __enter__(self):
         # Dummy implementation, see db.py for more info. 
@@ -62,5 +58,5 @@ class DBWikiPageEntry(DBPageEntry, Base):
 
 class WikiCacher(PageCacher):
     def __enter__(self):
-        self.manager = DBMan(DBWikiPageEntry, self.db_name, self.db_path)
+        self.manager = DBMan(DBWikiPageEntry, self.db_path)
         return self

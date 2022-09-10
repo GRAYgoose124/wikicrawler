@@ -33,16 +33,11 @@ class DBPageEntry(Base):
 
 
 class DBMan():
-    def __init__(self, node, db_name, db_path=None):  
-        if db_path is None:
-            db_path = os.getcwd() + '/databases'
-                  
-        db_full_path = db_path + '/' + db_name
-        
+    def __init__(self, node, db_path):                          
         if os.name == 'nt':
-            db_full_path = f'sqlite:///{db_full_path}'
+            db_full_path = f'sqlite:///{db_path}'
         else:
-            db_full_path = f'sqlite:////{db_full_path}'
+            db_full_path = f'sqlite:////{db_path}'
 
         self.db_path = db_full_path
 
