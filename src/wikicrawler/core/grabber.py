@@ -130,7 +130,7 @@ class WikiGrabber:
                 links = {x.text: "https://en.wikipedia.org" + x['href'] for x in filter(None, [a if a['href'].startswith('/wiki') else None for a in pa.find_all('a')])}
                 paragraph_links.append(links)
         except (AttributeError, KeyError) as e:
-            logger.debug("Missing mw-parser-output - Is this even a wiki page?")
+            logger.debug("Missing mw-parser-output - Is this even a wiki page?", exc_info=e)
 
         return paragraphs, paragraph_links
 

@@ -89,7 +89,7 @@ def parse_page(page, level):
 
 
 def analyze_page(page, amount=0.1, indices=None, level=2, printing=True):
-    # todo: clean up use cases
+    # TODO: clean up use cases
     body, sentences, words, word_freq, collocs = parse_page(page, level)
 
     if printing:

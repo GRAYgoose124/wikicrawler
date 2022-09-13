@@ -11,6 +11,7 @@ from .oracle import Oracle
 from .utils.search import print_results
 
 from .script import WikiScriptEngine
+from .seer import Seer
 
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ class WikiPrompt(WikiScriptEngine):
         super().__init__(config, crawler, cacher=cacher)
 
         self.oracle = Oracle(self, cacher=cacher)
+        self.seer = Seer(self, cacher=cacher)
     
     def handle_search(self, topic, interactive=True):
         if topic == 'most_similar_colloc':
@@ -196,8 +198,6 @@ class WikiPrompt(WikiScriptEngine):
 
         st sentences <start> <end> - analyze current page with sentences from <start> to <end>
         
-        st most_similar_colloc - get most similar collocation
-
         st save - save current page to file
         st delete - delete current page from file
 
@@ -264,15 +264,20 @@ class WikiPrompt(WikiScriptEngine):
         except (ValueError, IndexError) as e:
             logging.exception("Handle_state choice error.", exc_info=e)
 
+
     def parse_cmd(self, command, interactive=False):
         """
         Parse command and execute.
 
         s <phrase> - search for phrase
+        s most_similar_colloc - get most similar collocation
+        s most_similar_freq - get most similar collocation
+
         u <url> - search for url
         
         st <subcmd> - handle state commands
-        ora <subcmd> - handle oracle commands
+        o[racle] <subcmd> - handle oracle commands
+        seer <subcmd> - handle seer commands
 
         pointer - print pointer
         state - print state
@@ -293,8 +298,11 @@ class WikiPrompt(WikiScriptEngine):
             case ['st', *subcmd]:
                 self.handle_state(subcmd)
 
-            case ['ora', *cmd]:
+            case ['o' | 'oracle', *cmd]:
                 self.oracle.parse_cmd(cmd)
+
+            case ['seer', *cmd]:
+                self.seer.parse_cmd(cmd)
 
             case ['pointer']:
                 print(self.pointer)

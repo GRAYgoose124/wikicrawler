@@ -6,7 +6,7 @@ from ..core.db.cacher import WikiCacher
 from ..core.utils.config import init_config
 
 from .prompt import WikiPrompt
-
+from ..seer.markdown import MarkdownBuilder
 
 logging.basicConfig(format='%(name)s:%(lineno)d::%(levelname)s> %(message)s', level=logging.DEBUG)
 logger = logging.getLogger(__name__)

@@ -176,7 +176,7 @@ class WikiScriptEngine:
         except Exception as e:
             logger.debug("uh?", exc_info=e)
                 
-        body, sentences, words, collocations, freq = analyze_page(page, printing=printing, amount=amount)
+        body, sentences, words, freq, collocations = analyze_page(page, printing=printing, amount=amount)
 
         if 'stats' not in page:
             page['stats'] = {}
