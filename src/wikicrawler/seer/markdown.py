@@ -7,6 +7,10 @@ logger = logging.getLogger(__name__)
 
 
 class MarkdownBuilder:
+    """ This class provides the ability to compile pages into markdown directories.
+
+    TODO: Mixin as to Seer to expose to seer prompt wrapper.
+    """
     def __init__(self, config, cacher=None):
         self.cacher = cacher
         self.root_dir = config['data_root'] + '/markdown'

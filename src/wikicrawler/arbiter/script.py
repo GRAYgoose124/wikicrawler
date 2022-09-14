@@ -120,7 +120,7 @@ class WikiScriptEngine:
 
         self.functions[name] = function
     
-    def parse_cmd(self, command):
+    def parse_cmd(self, command, interactive=False):
         raise NotImplementedError("This method must be implemented by a subclass.")
 
     def loop(self):
@@ -149,6 +149,12 @@ class WikiScriptEngine:
         # list of commands
         elif isinstance(script_or_path, list):
             for command in script_or_path:
+                # command is a lambda to delay execution until now.
+                if isinstance(command, Callable):
+                    logger.debug("Running delayed command: {}".format(command))
+                    command = command()
+                    logger.debug("Command: {}".format(command))
+
                 self.parse_cmd(command)
 
     # helpers

@@ -1,5 +1,5 @@
 # About
-The goal of this project is to create a wikipedia crawler which makes finding new information faster.
+The goal of this project is to create a wikipedia crawler which makes finding new information faster. 
 
 Currently it has a simple command line interface which you can access through the `arbiter` script installed by pip.
 
@@ -30,14 +30,13 @@ This will reveal a prompt, try the `help` and `st help`  command.
     > exit
 
 ### Typical workflows:
-
 #### Search
     > s <phrase>
     > st found [idx]      # no idx: list, idx: get
     > st show [amount]      # float: percent, int: sentences
 #### Collocation traverse
     > s <phrase>
-    > ora cmov <phrase>     # use most similar collocation in current page
+    > o[racle] cmov <phrase>     # use most similar collocation in current page
 #### State
     > st hist [idx]     # page traversal history
 
@@ -45,3 +44,10 @@ This will reveal a prompt, try the `help` and `st help`  command.
 
     > st pop
     > st unpop
+#### auto traverse
+    > as <n> <start_phrase>
+    or
+    > bas <n> <start_phrase>
+#### building markdown
+After a valid search-type function:
+    > seer build

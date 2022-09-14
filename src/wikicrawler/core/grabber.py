@@ -3,6 +3,8 @@ from functools import partial
 from multiprocessing import Pool
 import os
 import json
+import time
+
 import urllib
 import urllib.request
 import urllib.parse
@@ -25,13 +27,13 @@ from .utils.model_to_dict import model_to_dict
 logger = logging.getLogger(__name__)
 
 
-def retrieve_wrapper(dl_url, save_loc):
+def media_retrieve_wrapper(dl_url, save_loc):
     try:
         urllib.request.urlretrieve(dl_url, save_loc)
     except (urllib.error.HTTPError, urllib.error.URLError) as e:
         # logger.debug("Failed to download media. - Likely rate limited.")
         sleep(5)
-        retrieve_wrapper(dl_url, save_loc)
+        media_retrieve_wrapper(dl_url, save_loc)
 
 
 # TODO: make grabber asyncronous
@@ -55,7 +57,26 @@ class WikiGrabber:
         if self.save_media and not os.path.exists(self.media_save_location):
             os.makedirs(self.media_save_location)
 
+        self.fetches = []
+
+    def limit(self, limit=5):
+        for f in self.fetches:
+            if f + 5 < time.perf_counter():
+                self.fetches.remove(f)
+        
+        if len(self.fetches) > limit:
+            return True
+        else:
+            return False    
+
     def fetch(self, url):
+        if self.limit():
+            sleep(10)
+            self.fetch(url)
+            return
+        else:
+            self.fetches.append(time.perf_counter())
+
         parsed_url = urllib.parse.urlparse(url)
 
         page = None
@@ -66,17 +87,22 @@ class WikiGrabber:
                 page = response.read().decode("utf-8")
             except urllib.error.HTTPError as e:
                 logger.debug(f"{url} is invalid?", exc_info=e)
-                sleep(1)
+                # sleep(3)
+                # return self.fetch(url)
             except urllib.error.URLError as e:
                 logger.debug(f"{url} timed out.", exc_info=e)
-                sleep(1)
-                return self.fetch(url)
+                #sleep(3)
+                #return self.fetch(url)
         else:
             raise ValueError(url)
     
-        page_struct = bs(page, 'html.parser')
-        page_struct.url = url
-        return page_struct
+        try:
+            page_struct = bs(page, 'html.parser')
+            page_struct.url = url
+            return page_struct
+        except TypeError as e:
+            logger.debug(f"Failed to parse {url} - likely throttled.", exc_info=e)
+            return None
 
     def retrieve(self, url, page=None):
         # TODO: Add optional nodb keyword.
@@ -213,7 +239,7 @@ class WikiGrabber:
                 # with Pool(len(dl_urls)) as p:
                 #     p.starmap(urllib.request.urlretrieve, zip(dl_urls, save_locs))
                 for dl_url, save_loc in zip(dl_urls, save_locs):
-                    p = partial(retrieve_wrapper, dl_url, save_loc)
+                    p = partial(media_retrieve_wrapper, dl_url, save_loc)
                     t = threading.Thread(target=p, daemon=True)
                     logger.debug(f"Started downloading {dl_url}.")
                     t.start()

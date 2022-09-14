@@ -1,7 +1,9 @@
 - TODO: Refactor to use asyncio - mostly fixes media blocking issues. (LOW)
 - TODO: Use logging for debugging/unittest purposes
 - TODO: csv, pandas support
-- TODO: seer/markdown tree builder
 - TODO: crawler traversal support
 - TODO: arbiter/oracle state/path caching. - sqlalchemy?
 - TODO: handle wiki list pages!
+- TODO: standalone seer portion
+- TODO/URGENT: Make PageCacher manage Prompt state.
+- TODO: Filter Disambiguation:Help / Help pages.

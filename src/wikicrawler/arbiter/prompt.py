@@ -25,6 +25,7 @@ class WikiPrompt(WikiScriptEngine):
         self.seer = Seer(self, cacher=cacher)
     
     def handle_search(self, topic, interactive=True):
+        # TODO: generalize this for all commands.
         if topic == 'most_similar_colloc':
             topic = self.pointer['most_similar_colloc']
         elif topic == 'most_similar_freq':
@@ -51,14 +52,14 @@ class WikiPrompt(WikiScriptEngine):
     def handle_state_colloc(self, state, phrase):
         # st colloc
         if len(phrase) == 0:
-            print_results(state['stats']['collocations'])
+            print_results([" ".join(x) for x in state['stats']['collocations']])
         # st colloc <phrase>
         else:
             phrase = " ".join(phrase)
 
-            most_similar = (0.0, None)
+            most_similar = (0.0, "")
             for colloc in state['stats']['collocations']:
-                colloc = "".join(colloc)
+                colloc = " ".join(colloc)
                 similarity = jaro_winkler_similarity(colloc, phrase) 
 
                 if similarity > most_similar[0]:
@@ -158,12 +159,16 @@ class WikiPrompt(WikiScriptEngine):
                 last_search = self.crawl_state['last_search']
 
             print_results(last_search)
-        # st res <idx>
+        # st found <idx>
         else:
             if len(self.crawl_state['last_search']) == 1:
                 page = self.crawl_state['last_search'][0]
             elif len(idx) >= 1:
                 page = self.crawl_state['last_search'][int(idx[0])]
+
+            # TODO: Consolidate, frayed logic consequence?
+            if isinstance(page, tuple):
+                page = page[1]
         
             self.analyze_page_wrapper(page)
 
@@ -264,7 +269,7 @@ class WikiPrompt(WikiScriptEngine):
                     return False
             return True
         except (ValueError, IndexError) as e:
-            logging.exception("Handle_state choice error.", exc_info=e)
+            logger.exception("Handle_state choice error.", exc_info=e)
 
 
     def parse_cmd(self, command, interactive=False):
@@ -289,6 +294,8 @@ class WikiPrompt(WikiScriptEngine):
         help - print help
         exit - exit cli
         """
+        logger.debug(command)
+
         match command.split():
             case ['s', *phrase]: 
                 if len(phrase) != 0:

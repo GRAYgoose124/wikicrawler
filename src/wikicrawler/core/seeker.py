@@ -42,7 +42,12 @@ class WikiSeeker(WikiGrabber):
     def __speciallinks(self, page):
         links = {}
 
-        for link in page.select(".mw-search-results")[0].find_all('a'):
+        try:
+            page = page.select(".mw-search-results")[0]
+        except IndexError:
+            pass
+    
+        for link in page.find_all('a'):
             try:
                 if link['href'].startswith('/wiki/'):
                     links[link['title']] = link['href']
@@ -55,7 +60,12 @@ class WikiSeeker(WikiGrabber):
         search_url = f"{base_url}/wiki/Special:Search?search={urllib.parse.quote(phrase, safe='')}&"
 
         # retrieve search page results - may be disambig, wikipage, or other?
+        
+        
         results = self.fetch(search_url)
+        if results is None:
+            return (None, None)
+            
 
         # handle special search
         if results.url.startswith(f"{base_url}/wiki/Special:Search?"):
