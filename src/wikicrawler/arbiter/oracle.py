@@ -24,16 +24,18 @@ class Oracle:
         pass
 
     def handle_freq_move(self, jump_phrase):
-        self.prompt.run_script(f"st freq {jump_phrase}",
-                        f"s most_similar_freq",
-                        "st found 0")
+        self.prompt.run_script([f"st freq {jump_phrase}",
+                                 "s most_similar_freq",
+                                 "st found 0"])
+
         logger.debug(f"fmov proc: {jump_phrase}, {self.prompt.pointer['most_similar_freq']}, {self.prompt.crawl_state['last_search'][0]}")
 
     # TODO: refactor into file.
     def handle_colloc_move(self, jump_phrase):
-        self.prompt.run_script(f"st colloc {jump_phrase}",
-                        f"s most_similar_colloc",
-                        "st found 0")
+        self.prompt.run_script([f"st colloc {jump_phrase}",
+                                 "s most_similar_colloc",
+                                 "st found 0"])
+
         logger.debug(f"cmov proc: {jump_phrase}, {self.prompt.pointer['most_similar_colloc']}, {self.prompt.crawl_state['last_search'][0]}")
 
     # TODO: Oracle should compile a summarization of the crawl and user input.

@@ -25,7 +25,8 @@ class MarkdownBuilder:
 
         content += "## Paragraphs\n"
         for paragraph in page['paragraphs']:
-            if any([" ".join(top5) in paragraph for top5 in page['stats']['collocations'][:5]]):
+            top5 = list(page['stats']['collocations'])[:5]
+            if any([" ".join(top) in paragraph for top in top5]):
                 content += paragraph + ' '
         content += '\n'
 

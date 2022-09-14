@@ -131,26 +131,23 @@ class WikiScriptEngine:
             
             self.parse_cmd(command, interactive=True)
 
-    def run_script(self, *script_or_path):
-        if len(script_or_path) == 1:
-            script_or_path = script_or_path[0]
-            # check for script at path
-            if os.path.exists(script_or_path):
-                with open(script_or_path, 'r') as script:
-                    for command in script:
-                        self.parse_cmd(command)
-            # see if it's just a file object
-            elif isinstance(script_or_path, TextIOWrapper):
-                for command in script_or_path:
-                    self.parse_cmd(command)
-            # or try to split the string by \n
-            elif '\n' in script_or_path:
+    # TODO: standardize interface
+    def run_script(self, script_or_path):
+        if isinstance(script_or_path, str):
+            # script string
+            if '\n' in script_or_path:
                 for command in script_or_path.split('\n'):
                     self.parse_cmd(command)
-        # otherwise check if it's a list of commands
-        elif (isinstance(script_or_path, tuple)
-         and len(script_or_path) > 1
-         and isinstance(script_or_path[0], str)):
+            # script file
+            else:
+                with open(script_or_path, 'r') as f:
+                    for command in f.readlines():
+                        self.parse_cmd(command)
+        elif isinstance(script_or_path, TextIOWrapper):
+            for command in script_or_path:
+                self.parse_cmd(command)
+        # list of commands
+        elif isinstance(script_or_path, list):
             for command in script_or_path:
                 self.parse_cmd(command)
 
@@ -160,31 +157,36 @@ class WikiScriptEngine:
         self.crawl_state['page_stack'].append(page['title'])
     
     def selection_wrapper(self, page):
+        logger.debug(f"selection_wrapper: {page['title']}")
+
         self.crawl_state['user_choice_stack'].append(page['title'])
         self.pointer['selection'] = page['title']
 
     # TODO: Fix frayed logic, printing should be separate. use parse_page instead.
     def analyze_page_wrapper(self, page, printing=True, amount=0.1):
+        # TODO: Named tuple.
+        page_tuple = None
+        
         try:
             if isinstance(page, Callable):
                 logger.debug(f"Unpacked page tuple. {page}")
                 page = page()
-            elif isinstance(page, tuple):
+            elif isinstance(page, tuple) and isinstance(page[1], Callable):
                 page = page[1]()
             elif isinstance(page, str):
                 page = self.crawler.retrieve(page)
         except Exception as e:
             logger.debug("uh?", exc_info=e)
                 
-        body, sentences, words, freq, collocations = analyze_page(page, printing=printing, amount=amount)
+        if printing or 'stats' not in page:
+            page_tuple = analyze_page(page, printing=printing, amount=amount)
 
-        if 'stats' not in page:
             page['stats'] = {}
-    
-        page['stats']['collocations'] = collocations
-        page['stats']['frequencies'] = freq
+        
+            page['stats']['frequencies'] = page_tuple[3]
+            page['stats']['collocations'] = page_tuple[4]
 
         self.page_wrapper(page)
         self.selection_wrapper(page)
 
-        return body, sentences, words, collocations, freq
+        return page_tuple

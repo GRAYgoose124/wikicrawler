@@ -58,7 +58,7 @@ class WikiPrompt(WikiScriptEngine):
 
             most_similar = (0.0, None)
             for colloc in state['stats']['collocations']:
-                colloc = " ".join(colloc)
+                colloc = "".join(colloc)
                 similarity = jaro_winkler_similarity(colloc, phrase) 
 
                 if similarity > most_similar[0]:
@@ -141,7 +141,8 @@ class WikiPrompt(WikiScriptEngine):
             try:
                 idx = int(idx[0])
                 state = self.crawl_state['pages'][self.crawl_state['page_stack'][idx]]
-                self.analyze_page_wrapper(state)
+
+                self.analyze_page_wrapper(state, printing=False)
             except ValueError as e:
                 logger.debug("Invalid index to page list.", exc_info=e)
                         
@@ -205,8 +206,9 @@ class WikiPrompt(WikiScriptEngine):
         """
         try:
             state = self.crawl_state['pages'][self.pointer['selection']]
-        except IndexError:
-            state = None
+        except (IndexError, KeyError):
+            logger.debug("No page selected.")
+            return
 
         try:
             match subcmd:
@@ -237,9 +239,9 @@ class WikiPrompt(WikiScriptEngine):
                         try:
                             amount = float(amount[0])
                         except (IndexError, ValueError):
-                            amount = 1.0
-
-                        self.analyze_page_wrapper(self.crawl_state['pages'][self.pointer['selection']], amount=amount)
+                            amount = .05
+                
+                        self.analyze_page_wrapper(self.crawl_state['pages'][self.pointer['selection']], amount=amount, printing=True)
                     except KeyError:
                         print("No selection to show.")
 

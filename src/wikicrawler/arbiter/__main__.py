@@ -15,9 +15,12 @@ logger = logging.getLogger(__name__)
 def main():
     config = init_config()
 
-    nltk.download('wordnet')
-    nltk.download('omw-1.4')
-
+    try:
+        nltk.download('wordnet')
+        nltk.download('omw-1.4')
+    except KeyboardInterrupt:
+        pass
+    
     with WikiCacher(config) as wc:
         crawler = WikiCrawler(config, cacher=wc)
         prompt = WikiPrompt(config, crawler, cacher=wc)
