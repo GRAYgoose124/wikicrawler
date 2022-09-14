@@ -7,3 +7,5 @@
 - TODO: standalone seer portion
 - TODO/URGENT: Make PageCacher manage Prompt state.
 - TODO: Filter Disambiguation:Help / Help pages.
+- TODO/BIG: multi client crawler for bypassing rate limits.
+- TODO: Preloaded search list command.

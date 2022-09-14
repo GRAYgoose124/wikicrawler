@@ -13,9 +13,14 @@ class Seer(MarkdownBuilder):
         self.cacher = cacher
 
     def handle_build(self):
+        """ Build the current selection. 
+        """
         self.build(self.prompt.crawl_state['pages'][self.prompt.pointer['selection']])
 
     def handle_build_hist(self):
+        """
+        Build all pages in the history. 
+        """
         saved_pointer = self.prompt.pointer.copy()
 
         script = []

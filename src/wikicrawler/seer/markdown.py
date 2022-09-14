@@ -19,6 +19,11 @@ class MarkdownBuilder:
             os.makedirs(self.root_dir)
 
     def build(self, page):
+        """ Build a page into markdown.
+
+        This function takes a page and converts it into a markdown directory.
+        TODO: Add paragraph links and citation links to markdown.
+        """
         page_dir = self.root_dir + '/' + page['title']
 
         if not os.path.exists(page_dir):

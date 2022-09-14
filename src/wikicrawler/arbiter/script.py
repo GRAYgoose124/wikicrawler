@@ -30,6 +30,8 @@ class WikiScriptEngine:
         if not os.path.exists(self.prompt_dir):
             os.makedirs(self.prompt_dir)
 
+        # -- init state from file --
+
         if config['prompt_state'] is not None:
             filename = config['prompt_state']
         else:
@@ -68,10 +70,17 @@ class WikiScriptEngine:
             self.pointer = { 'most_similar_freq': None, 'most_similar_colloc': None, 'selection': None, 'selected_text': None}
         
     def reset_state(self):
+        """ Reset the state of the prompt. 
+        """
         self.crawl_state = {'user_choice_stack': [], 'page_stack': [], 'pop_stack': [], 'pages': {}, 'last_search': None}
         self.pointer = { 'most_similar_freq': None, 'most_similar_colloc': None, 'selection': None, 'selected_text': None}
 
     def del_state(self):
+        """ Delete the state of the crawler prompt.
+        
+        This is useful if you want to start over from scratch, removing all the
+        pages you've already crawled and the pages you've already selected.
+        """
         self.reset_state()
 
         with open(self.prompt_dir + f"/{self.config['prompt_state']}.json", 'w') as f:
@@ -81,6 +90,8 @@ class WikiScriptEngine:
             json.dump(self.pointer, f)
 
     def save_state(self):
+        """ Save the state of the prompt.
+        """
         try:
             with open(self.prompt_dir + f"/{self.config['prompt_state']}.json", 'w') as f:
                 if not hasattr(self, 'crawl_state'):
@@ -103,6 +114,10 @@ class WikiScriptEngine:
             logger.debug("Files probably deleted while system was running", exc_info=e)
 
     def cmd_func_init(self, name, lines=None):
+        """ This function is used to initialize a function from script/interactive mode.
+        
+        It then stores the function in the functions cache.
+        """
         function = []
         line = None
 
@@ -121,9 +136,14 @@ class WikiScriptEngine:
         self.functions[name] = function
     
     def parse_cmd(self, command, interactive=False):
+        """ Parse a command from the prompt.
+        
+        This is a dummy implementation meant to be overridden by subclasses."""
         raise NotImplementedError("This method must be implemented by a subclass.")
 
     def loop(self):
+        """ The main loop of the prompt.
+        """
         command = ""
 
         while command != "exit":
@@ -133,6 +153,11 @@ class WikiScriptEngine:
 
     # TODO: standardize interface
     def run_script(self, script_or_path):
+        """ Run a script from a file, string, or list of commands.
+
+        Args:
+            script_or_path (TextIOWrapper, str or list): The script to run.
+        """
         if isinstance(script_or_path, str):
             # script string
             if '\n' in script_or_path:
@@ -159,10 +184,18 @@ class WikiScriptEngine:
 
     # helpers
     def page_wrapper(self, page):
+        """ Simple wrapper to make command creation more readable and consistent. 
+        
+        Adds page to the page stack and stores the page in the pages for history recording.
+        """
         self.crawl_state['pages'][page['title']] = page
         self.crawl_state['page_stack'].append(page['title'])
     
     def selection_wrapper(self, page):
+        """ Simple wrapper to make command creation more readable and consistent.
+        
+        Updates the selection pointer and user choice stack.
+        """
         logger.debug(f"selection_wrapper: {page['title']}")
 
         self.crawl_state['user_choice_stack'].append(page['title'])
@@ -170,6 +203,15 @@ class WikiScriptEngine:
 
     # TODO: Fix frayed logic, printing should be separate. use parse_page instead.
     def analyze_page_wrapper(self, page, printing=True, amount=0.1):
+        """ Wrapper for analyze_page to make command creation more readable and consistent.
+        
+        Ensures that all commands that analyze a page have the same behavior.
+        
+        Args:
+            page (dict): The page to analyze.
+            printing (bool): Whether to print the results. (interactive mode)
+            amount (float): The amount of the page to print.
+        """
         # TODO: Named tuple.
         page_tuple = None
         

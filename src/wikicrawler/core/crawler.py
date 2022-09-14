@@ -6,6 +6,7 @@ from .db.cacher import WikiCacher
 
 class WikiCrawler(WikiSeeker):
     def traverse(self, start_page, tags):
+        """ Traverses the wiki depth-first from a given page using raw href/links."""
         path = []
         
         # href traversal

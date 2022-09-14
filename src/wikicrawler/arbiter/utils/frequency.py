@@ -1,6 +1,8 @@
 # TODO: This is a hack because ['stats']['frequencies'] is a dict
 # converted from a FreqDist so it can be pickled.
 def get_highest_freq(freqs):
+    """ Return the highest frequency in a frequency distribution.###
+    """
     max_freq = 0
     max_word = None
 

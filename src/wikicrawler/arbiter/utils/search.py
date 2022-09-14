@@ -4,7 +4,7 @@ import cmd
 cli = cmd.Cmd()
 
 
-def print_results(results, dw=240):
+def print_results(results, dw=180):
     if isinstance(results[0], dict):
         cli.columnize([f"\t{i}: {r['title']}" for i, r in enumerate(results)], displaywidth=dw)
     elif isinstance(results[0], tuple):

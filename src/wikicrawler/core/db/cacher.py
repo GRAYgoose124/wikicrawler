@@ -5,6 +5,12 @@ from sqlalchemy.exc import NoResultFound
 
 
 class PageCacher:
+    """ The PageCacher is a context manager that manages the database connection automatically.
+
+    This class provides the ability to cache pages into a database, and retrieve them transparently.
+
+    It can be extended to use other databases, or other caching methods. TODO: csv/json backends.
+    """
     def __init__(self, config):
         self.config = config
         self.manager = None
@@ -24,6 +30,7 @@ class PageCacher:
         self.manager.close()
         self.manager = None
 
+        # note: for unifying/ensuring/syncronizing all save operations.
         for hook in self.hooks:
             hook()
 
@@ -47,6 +54,8 @@ class PageCacher:
 
 
 class DBWikiPageEntry(DBPageEntry, Base):
+    """ This class is a database entry for a wikipeida page. It is used by the WikiCacher to store pages in it's specialized database.
+    """
     title = Column(Text, nullable=False)
     paragraphs = Column(JSON, nullable=False)
     paragraph_links = Column(JSON, nullable=True)
@@ -57,6 +66,8 @@ class DBWikiPageEntry(DBPageEntry, Base):
 
 
 class WikiCacher(PageCacher):
+    """ The WikiCacher is a specialized PageCacher that caches wikipedia pages only.
+    """
     def __enter__(self):
         self.manager = DBMan(DBWikiPageEntry, self.db_path)
         return self

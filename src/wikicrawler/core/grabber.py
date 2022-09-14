@@ -38,11 +38,23 @@ def media_retrieve_wrapper(dl_url, save_loc):
 
 # TODO: make grabber asyncronous
 class WikiGrabber:
+    """ WikiGrabber is a class that handles the fetching of wikipedia pages
+
+    It is used to fetch pages from wikipedia and parse them into a format
+    that can be used by the arbiter and seer. It uses the cacher to store
+    the pages it fetches so that it can store pages transparently.
+    """
     wiki_regex = re.compile("^https*://.*\.wikipedia\.org.*")
     link_regex = re.compile("^https*://.*\..*")
     header_regex = re.compile('^h[1-6]$')
 
     def __init__(self, config, cacher=None):
+        """ Initializes the WikiGrabber class.
+
+        Args:
+            config (dict): The configuration dictionary. 
+            cacher (WikiCacher): The cacher to use. If none is provided, no caching is performed.
+        """
         self.config = config
         self.cacher = cacher
 
@@ -51,6 +63,12 @@ class WikiGrabber:
         self.process_media_links = config['process_media_links']
         self.media_save_location = config['data_root'] + config['media_folder']
     
+        logger.debug(" -- Config Settings -- " +
+                     f"\n\tMedia saving: {self.save_media}" +
+                     f"\n\t\tMedia save location: {self.media_save_location}" +
+                     f"\n\t\tMedia processing: {self.process_media_links}" +
+                     f"\n\tLatex conversion: {self.convert_latex}")
+
         if not os.path.exists(config['data_root']):
             os.makedirs(config['data_root'])
 
@@ -59,23 +77,45 @@ class WikiGrabber:
 
         self.fetches = []
 
-    def limit(self, limit=5):
+    def limit(self, t=5, limit=3):
+        """
+        Checks if the number of fetches in the last t seconds is greater than the limit.
+        
+        If it is, it will return True, otherwise False.
+        
+        This is a helper used by fetch to prevent too many requests from happening at once. 
+        """
         for f in self.fetches:
-            if f + 5 < time.perf_counter():
+            if f + t < time.perf_counter():
                 self.fetches.remove(f)
         
         if len(self.fetches) > limit:
+            sleep(t)
             return True
         else:
-            return False    
+            self.fetches.append(time.perf_counter())
+            return False
 
     def fetch(self, url):
+        """
+        Fetches a page from the internet.
+        
+        Args:
+            url (str): The url to fetch.
+
+        Returns:
+            bs4.BeautifulSoup: The naked page soup.
+
+        Raises:
+            urllib.error.HTTPError: If the page is not found or rate limited.
+            urllib.error.URLError: If the url is invalid.
+
+        """
+
+        # Prevents too many requests happening at once.
         if self.limit():
-            sleep(10)
             self.fetch(url)
             return
-        else:
-            self.fetches.append(time.perf_counter())
 
         parsed_url = urllib.parse.urlparse(url)
 
@@ -105,13 +145,19 @@ class WikiGrabber:
             return None
 
     def retrieve(self, url, page=None):
-        # TODO: Add optional nodb keyword.
+        """
+        Retrieves a page from the internet or cache and parses it into a dictionary 
+        for caching and processing.
 
+        Args:
+            url (str): The url to retrieve.
+            TODO: Deprecate page argument.
+            page (bs4.BeautifulSoup): If the page has already been fetched, pass it here.
+        """
         if url in self.cacher:
             return model_to_dict(self.cacher.get(url))
 
         if page is None:
-            # TODO: asyncronous?
             page = self.fetch(url)
 
         paragraphs, para_links = self.__paragraphs(page)
@@ -125,6 +171,7 @@ class WikiGrabber:
         if self.process_media_links:
             media_list = self.__get_media(page) 
 
+        # TODO: define this as a class for typing/API?
         wiki = { 'url': url, 
                 'title': page.find(id='firstHeading').get_text(), 
                 'paragraphs': paragraphs,
@@ -142,6 +189,12 @@ class WikiGrabber:
     # Wikipedia page parsing
     
     def __paragraphs(self, page):
+        """
+        Parses the paragraphs from a wikipedia page.
+        
+        Args: 
+            page (bs4.BeautifulSoup): The page to parse.
+        """
         paragraphs = []
         paragraph_links = []
 
@@ -161,6 +214,12 @@ class WikiGrabber:
         return paragraphs, paragraph_links
 
     def __page_links(self, page):
+        """
+        Parses the page links from a wikipedia page.
+
+        Args:
+            page (bs4.BeautifulSoup): The page to parse.
+        """
         links = {}
 
         try:
@@ -173,7 +232,12 @@ class WikiGrabber:
         return links
 
     def __reference_links(self, page):
-        # rip references
+        """
+        Parses the reference links from a wikipedia page.
+        
+        Args:
+            page (bs4.BeautifulSoup): The page to parse.
+        """
         references = {}
 
         content_text = page.find(id='mw-content-text')
@@ -194,7 +258,12 @@ class WikiGrabber:
         return references
 
     def __see_also(self, page):
-        # rip see also
+        """
+        Parses the see also links from a wikipedia page.
+
+        Args:
+            page (bs4.BeautifulSoup): The page to parse.
+        """
         see_also = {}
 
         content_text = page.find(id='mw-content-text')
@@ -214,6 +283,20 @@ class WikiGrabber:
         return see_also
 
     def __get_media(self, page):
+        """
+        Parses the media links from a wikipedia page.
+        
+        Args:
+            page (bs4.BeautifulSoup): The page to parse.
+            
+        Returns:
+            A list of media link references.
+
+        Class Variables Used:
+            self.save_media: If True, saves the media to disk.
+            self.process_media_links (bool): Whether to process media links if not saving.
+            self.media_save_path (str): The path to save media to if saving.
+        """
         save_locs = []
         dl_urls = []
 

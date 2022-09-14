@@ -17,6 +17,10 @@ base_url = f"https://{lang_code}.wikipedia.org"
 
 class WikiSeeker(WikiGrabber):
     def __catlinks(self, page):
+        """ Finds the categories of a general page.
+        
+        This function returns a list of categories that the page belongs to. 
+        """
         categories = {}
 
         try:        
@@ -29,7 +33,10 @@ class WikiSeeker(WikiGrabber):
 
     def __disambiglinks(self, page):
         links = {}
-        """This function assumes that it's being passed an identified disambiguation page."""
+        """This function assumes that it's being passed an identified disambiguation page.
+        
+        It returns a dictionary of links to the disambiguation results.
+        """
         for link in page.select('.mw-parser-output')[0].find_all('a'):
             try:
                 if link['href'].startswith('/wiki/'):
@@ -40,6 +47,10 @@ class WikiSeeker(WikiGrabber):
         return links
 
     def __speciallinks(self, page):
+        """ This function assumes that it's being passed a special search page. 
+        
+        It returns a dictionary of links to the search results.
+        """
         links = {}
 
         try:
@@ -57,20 +68,27 @@ class WikiSeeker(WikiGrabber):
         return links
 
     def search(self, phrase, precache=False):
+        """
+        Searches wikipedia for a phrase and yields a generator of results.
+
+        Args: 
+            phrase (str): The phrase to search for.
+            precache (bool): Whether or not to precache the results. (Very slow. TODO: Async fix)
+
+        Returns:
+            generator: A generator of result pairs, which are a tuple of the title and the retrieved page,
+                        or a partial function to retrieve the page at a later date if precache is False.
+        """
         search_url = f"{base_url}/wiki/Special:Search?search={urllib.parse.quote(phrase, safe='')}&"
 
         # retrieve search page results - may be disambig, wikipage, or other?
-        
-        
         results = self.fetch(search_url)
         if results is None:
             return (None, None)
             
-
         # handle special search
         if results.url.startswith(f"{base_url}/wiki/Special:Search?"):
             for result in self.__speciallinks(results).values():
-                # pass a lambda to avoid pre-caching every result.
                 if not precache:
                     yield (result, partial(self.retrieve, base_url + result))
                 else:
@@ -80,7 +98,6 @@ class WikiSeeker(WikiGrabber):
         categories = self.__catlinks(results)
         if any(["Disambiguation" in cat for cat in categories]):
             for result in self.__disambiglinks(results).values():
-                # pass a lambda to avoid pre-caching every result.
                 if not precache:
                     yield (result, partial(self.retrieve, base_url + result))
                 else:

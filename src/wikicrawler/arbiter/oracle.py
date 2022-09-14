@@ -49,7 +49,7 @@ class Oracle:
                    "st found 0", 
                    "seer build"]
 
-        for _ in range(n):
+        for _ in range(n-1):
             # TODO: At time of script "compile", this is not properly set, of course.
             # Probably should wrap it in a lambda and make the script engine evaluate it.
             cmov = lambda: "o cmov {} {}".format(randint(0, len(self.prompt.crawl_state['last_search'])-1), 
@@ -58,15 +58,18 @@ class Oracle:
                                                                     ['stats']['frequencies']))
 
             script.append(cmov)
+            script.append('seer build')
             if hook is not None:
                 # TODO: make hook a list?
                 script.append(f"{hook}")
-        
         
         ## logging.debug("Running script:\n\t{}".format('\n\t'.join(script))) TODO: DelayedExecution lambda wrapper?
         self.prompt.run_script(script)
 
     def handle_freq_move(self, n, jump_phrase):
+        """
+        Move to the first page that matches the nth most common frequency of the current page.
+        """
         self.prompt.run_script([f"st freq {jump_phrase}",
                                  "s most_similar_freq",
                                 f"st found {n}"])
@@ -75,6 +78,9 @@ class Oracle:
 
     # TODO: refactor into file.
     def handle_colloc_move(self, n, jump_phrase):
+        """
+        Move to the first page that matches the nth most common collocation of the current page.
+        """
         self.prompt.run_script([f"st colloc {jump_phrase}",
                                  "s most_similar_colloc",
                                 f"st found {n}"])

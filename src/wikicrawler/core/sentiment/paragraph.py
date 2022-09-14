@@ -33,6 +33,10 @@ blacklist = ['!', "'", ':', '_', '\\', ',', '.', '(', ')', '{', '}', '``', "''",
 
 
 def get_sentiments(sentences):
+    """ Sentiment analysis on a list of sentences.
+    
+    Returns a list of tuples of the form (word, score)
+    """
     sia = SentimentIntensityAnalyzer()
 
     scores = []
@@ -47,6 +51,8 @@ def get_sentiments(sentences):
 
 
 def print_sentiment(sentences):
+    """ Pretty print sentiment analysis on a list of sentences.
+    """
     # avg_score = { 'neg': 0, 'neu': 0, 'pos': 0, 'compound': 0 }
     for word, score in get_sentiments(sentences):
         r = int(255*(score['neg']))
@@ -59,6 +65,8 @@ def print_sentiment(sentences):
 
 
 def parse_page(page, level):
+    """ Parse a page into a list of sentences, words, word frequencies, and collocations.
+    """
     body = "".join(page['paragraphs'])
     sentences = nltk.sent_tokenize(body)
     words = nltk.word_tokenize(body)
@@ -89,6 +97,10 @@ def parse_page(page, level):
 
 
 def analyze_page(page, amount=0.1, indices=None, level=2, printing=True):
+    """ Prints a summary of parse_page() for a given page.
+
+    Uses sentiment and collocation analysis to summarize a page.
+    """
     # TODO: clean up use cases
     body, sentences, words, word_freq, collocs = parse_page(page, level)
 

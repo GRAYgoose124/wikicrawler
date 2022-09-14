@@ -3,7 +3,7 @@ The goal of this project is to create a wikipedia crawler which makes finding ne
 
 Currently it has a simple command line interface which you can access through the `arbiter` script installed by pip.
 
-# Build & Run
+# Build
 ## 1. Retrieve
     git clone git@github.com:GRAYgoose124/wikicrawler.git
     cd wikicrawler
@@ -18,8 +18,8 @@ Currently it has a simple command line interface which you can access through th
     cd wikicrawler
     pip install -e .
 
-## 3. Run
-### Start
+# Run
+## Start
 To start the app run after install: (use a venv!)
 
     arbiter
@@ -28,8 +28,7 @@ This will reveal a prompt, try the `help` and `st help`  command.
 
     > help
     > exit
-
-### Typical workflows:
+## Typical workflows:
 #### Search
     > s <phrase>
     > st found [idx]      # no idx: list, idx: get
@@ -46,8 +45,11 @@ This will reveal a prompt, try the `help` and `st help`  command.
     > st unpop
 #### auto traverse
     > as <n> <start_phrase>
-    or
+
+or, for auto building too:
+
     > bas <n> <start_phrase>
 #### building markdown
 After a valid search-type function:
+
     > seer build
