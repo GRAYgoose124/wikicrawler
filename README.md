@@ -53,3 +53,6 @@ or, for auto building too:
 After a valid search-type function:
 
     > seer build
+## Issues
+### Throttling / Rate limiting
+Set the wiki_api_token in `~/.wikicrawler/config.json` to get autheticated rate throttling.

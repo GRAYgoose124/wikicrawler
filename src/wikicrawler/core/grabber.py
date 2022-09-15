@@ -6,6 +6,7 @@ import json
 import time
 
 import urllib
+from urllib import response
 import urllib.request
 import urllib.parse
 import logging
@@ -113,17 +114,24 @@ class WikiGrabber:
         """
 
         # Prevents too many requests happening at once.
-        if self.limit():
-            self.fetch(url)
-            return
+        # if self.limit():
+        #     self.fetch(url)
+        #     return
 
         parsed_url = urllib.parse.urlparse(url)
 
         page = None
         if re.search("wikipedia.org", parsed_url.netloc):
             try:
-                response = urllib.request.urlopen(url)
+                req = urllib.request.Request(url)
+                try:
+                    req.add_header('Authorization', 'Bearer ' + self.config['wiki_api_token'])
+                except (ValueError, KeyError) as e:
+                    logger.exception("No wiki api token provided. Continuing without one.", exc_info=e)
+
+                response = urllib.request.urlopen(req)
                 url = response.geturl()
+
                 page = response.read().decode("utf-8")
             except urllib.error.HTTPError as e:
                 logger.debug(f"{url} is invalid?", exc_info=e)
@@ -198,7 +206,10 @@ class WikiGrabber:
         paragraphs = []
         paragraph_links = []
 
-        content_text = page.find(id='mw-content-text')
+        try:
+            content_text = page.find(id='mw-content-text')
+        except AttributeError as e:
+            logger.exception(f'Page not set: {page}', exc_info=e)
         body_start = content_text.find(attrs={'class': 'mw-parser-output'})
         try:
             for pa in body_start.find_all('p'):     

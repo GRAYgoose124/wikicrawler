@@ -224,7 +224,7 @@ class WikiScriptEngine:
             elif isinstance(page, str):
                 page = self.crawler.retrieve(page)
         except Exception as e:
-            logger.debug("uh?", exc_info=e)
+            logger.debug(f"uh? page was {page}", exc_info=e)
                 
         if printing or 'stats' not in page:
             page_tuple = analyze_page(page, printing=printing, amount=amount)

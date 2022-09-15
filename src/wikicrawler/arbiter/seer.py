@@ -40,10 +40,10 @@ class Seer(MarkdownBuilder):
 
         This is called by the prompt's parse_cmd function as a sub-parser.
 
+        Help:
+            build [all] - build the current selection (markdown only)
 
-        build [all] - build the current selection (markdown only)
-
-        help - print this help message.
+            help - print this help message.
         """
         match cmd:
             case ['build', *hist]:

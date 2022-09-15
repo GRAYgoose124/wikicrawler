@@ -211,7 +211,12 @@ class WikiPrompt(WikiScriptEngine):
             if len(self.crawl_state['last_search']) == 1:
                 page = self.crawl_state['last_search'][0]
             elif len(idx) >= 1:
-                page = self.crawl_state['last_search'][int(idx[0])]
+                try:
+                    page = self.crawl_state['last_search'][int(idx[0])]
+                except IndexError as e:
+                    # TODO/FIX: Somehow when cmoving from autosearch, the idx can be out of range.
+                    logger.exception(f"Invalid index to found page. {idx[0]}, {len(self.crawl_state['last_search'])}", exc_info=e)
+                    return
 
             # TODO: Consolidate, frayed logic consequence?
             if isinstance(page, tuple):

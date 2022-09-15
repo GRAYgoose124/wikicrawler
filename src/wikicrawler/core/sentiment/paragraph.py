@@ -66,6 +66,7 @@ def print_sentiment(sentences):
 
 def parse_page(page, level):
     """ Parse a page into a list of sentences, words, word frequencies, and collocations.
+
     """
     body = "".join(page['paragraphs'])
     sentences = nltk.sent_tokenize(body)
@@ -100,6 +101,7 @@ def analyze_page(page, amount=0.1, indices=None, level=2, printing=True):
     """ Prints a summary of parse_page() for a given page.
 
     Uses sentiment and collocation analysis to summarize a page.
+    TODO: Add more analysis on sentiment, using a total score of sentiment shift as pivot words.
     """
     # TODO: clean up use cases
     body, sentences, words, word_freq, collocs = parse_page(page, level)

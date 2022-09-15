@@ -58,7 +58,6 @@ class Oracle:
                                                                     ['stats']['frequencies']))
 
             script.append(cmov)
-            script.append('seer build')
             if hook is not None:
                 # TODO: make hook a list?
                 script.append(f"{hook}")
@@ -94,15 +93,16 @@ class Oracle:
         
         This is called by the prompt's parse_cmd function as a sub-parser.
 
-        div - divine traversal state
+        Help:
+            div - divine traversal state
 
-        as  <n> <start> - auto search through n pages from start query.
-        bas <n> <start> - auto search through n pages from start query, and build them with the Seer.
+            as  <n> <start> - auto search through n pages from start query.
+            bas <n> <start> - auto search through n pages from start query, and build them with the Seer.
 
-        cmov <n> <phrase> - move to first page matched by phrase==collocations[n] of current page.
-        fmov <n> <phrase> - move to first page matched by phrase==frequency[n] of current page.
+            cmov <n> <phrase> - move to first page matched by phrase==collocations[n] of current page.
+            fmov <n> <phrase> - move to first page matched by phrase==frequency[n] of current page.
 
-        help - show help
+            help - show help
         """
         match command:
             case ['div']:

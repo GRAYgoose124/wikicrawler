@@ -27,7 +27,8 @@ def init_config():
                     'process_media_links': False,
                     'prompt_state': None,
                     'pointer_state': None,
-                    'functions_cache': None}
+                    'functions_cache': None,
+                    'wiki_api_token': None}
 
         with open(config_file, "w") as f:
             json.dump(config, f, indent=2)
