@@ -16,3 +16,4 @@ DONE
 .vscode/*
 *.lock
 *.bak
+**/.tox/*

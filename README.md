@@ -1,4 +1,5 @@
-# About
+# About ![example workflow](https://github.com/GRAYgoose124/wikicrawler/actions/workflows/tests.yml/badge.svg)
+
 The goal of this project is to create a wikipedia crawler which makes finding new information faster. 
 
 Currently it has a simple command line interface which you can access through the `arbiter` script installed by pip.
