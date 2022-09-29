@@ -113,10 +113,9 @@ class WikiGrabber:
 
         """
 
-        # Prevents too many requests happening at once.
-        # if self.limit():
-        #     self.fetch(url)
-        #     return
+        if self.limit():
+            self.fetch(url)
+            return
 
         parsed_url = urllib.parse.urlparse(url)
 

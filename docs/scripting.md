@@ -1,0 +1,1 @@
+The scripting system works around a state-based engine.

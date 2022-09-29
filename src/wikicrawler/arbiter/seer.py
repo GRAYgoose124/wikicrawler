@@ -38,7 +38,7 @@ class Seer(MarkdownBuilder):
         """
         Handles page conversions.
 
-        This is called by the prompt's parse_cmd function as a sub-parser.
+        This is called by the prompt's parse_cmd function as a sub-parser, so it's avaialable in the arbiter/prompt.
 
         Help:
             build [all] - build the current selection (markdown only)

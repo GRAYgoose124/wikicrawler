@@ -3,9 +3,11 @@
 - TODO: csv, pandas support
 - TODO: crawler traversal support
 - TODO: arbiter/oracle state/path caching. - sqlalchemy?
-- TODO: handle wiki list pages!
+- TODO/URGENT: handle wiki list pages!
 - TODO: standalone seer portion
 - TODO/URGENT: Make PageCacher manage Prompt state.
 - TODO: Filter Disambiguation:Help / Help pages.
 - TODO/BIG: multi client crawler for bypassing rate limits.
 - TODO: Preloaded search list command.
+- TODO: 
+- TODO: filter out Help:Pages, pages at grabber level.

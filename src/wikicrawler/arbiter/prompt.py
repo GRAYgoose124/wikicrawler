@@ -47,25 +47,28 @@ class WikiPrompt(WikiScriptEngine):
 
         self.crawl_state['last_search'] = results
 
-    def handle_url(self, url):
+    def handle_url(self, urls):
         """ Retrieve a page from a URL and update the crawl state.
 
         Args:
             url (str): The URL to retrieve.
         """
-        if WikiCrawler.wiki_regex.match(url):
-            page = self.crawler.retrieve(url)
+        for url in urls:
+            if WikiCrawler.wiki_regex.match(url):
+                # TODO: Does this need a rate limit?
+                page = self.crawler.retrieve(url)
 
-            self.analyze_page_wrapper(page)
-        else:
-            print("Invalid Wikipedia url.")
+                self.analyze_page_wrapper(page, printing=False)
+            else:
+                print("Invalid Wikipedia url.")
     
     # handle_state
     def handle_state_colloc(self, state, phrase):
         """ Handle the state command for finding collocations, in particular, it sets the most_similar_colloc pointer.
         
         Args:
-            state (dict): The crawl state operated on. TODO: generalize this for all commands. why are we passing this?
+            state (dict): The crawl state operated on. NOTE: We are passing this to make sure the 
+                                                state is properly updated for the script engine. Fix?
             phrase (list): The phrase to find the most similar collocation for.
         """
         # st colloc
@@ -87,7 +90,7 @@ class WikiPrompt(WikiScriptEngine):
             logger.debug(f"Most similar collocation: {most_similar[1]}")
 
     def handle_state_freq(self, state, phrase):
-        """ Handle the state command for finding most similar frequent phrases, in particular, it sets the most_similar_freq pointer.
+        """ Handle the state command for finding most similar frequent phrases, in particular, it sets XAthe most_similar_freq pointer.
         
         Args:
             state (dict): The crawl state operated on.
@@ -215,6 +218,7 @@ class WikiPrompt(WikiScriptEngine):
                     page = self.crawl_state['last_search'][int(idx[0])]
                 except IndexError as e:
                     # TODO/FIX: Somehow when cmoving from autosearch, the idx can be out of range.
+                    # I believe this is when there are no search results.
                     logger.exception(f"Invalid index to found page. {idx[0]}, {len(self.crawl_state['last_search'])}", exc_info=e)
                     return
 
@@ -356,7 +360,7 @@ class WikiPrompt(WikiScriptEngine):
                 if len(phrase) != 0:
                     self.handle_search(" ".join(phrase), interactive=interactive)
 
-            case ['u', url]:
+            case ['u', *url]:
                 self.handle_url(url)
 
             case ['st', *subcmd]:
