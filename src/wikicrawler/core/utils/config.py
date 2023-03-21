@@ -1,6 +1,8 @@
 import os
 import json
 
+from pathlib import Path
+
 
 def init_config():
     env_root = os.getenv('WIKICRAWLER_ROOT')
@@ -11,14 +13,18 @@ def init_config():
     else:
         data_root = os.path.expanduser("~/.wikicrawler")
 
-    config_file = data_root + "/config.json"
+    data_root = Path(data_root)
+    config_file = data_root / "config.json"
+
+    if not os.path.exists(data_root):
+        os.makedirs(data_root)
 
     config = None
     if os.path.exists(config_file):
         with open(config_file, "r") as f:
             config = json.load(f)
     else:
-        config = {  'data_root': data_root,
+        config = {  'data_root': str(data_root),
                     'media_folder': '/images',
                     'db_file': '/arbiter.db',
                     'search_precaching': False,

@@ -3,8 +3,8 @@ import json
 import logging
 import os
 # For command history
-import readline
-
+if os.name == 'posix':
+    import readline
 from io import TextIOWrapper
 from typing import Callable
 
