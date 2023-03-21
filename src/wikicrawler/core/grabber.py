@@ -125,7 +125,7 @@ class WikiGrabber:
                 req = urllib.request.Request(url)
                 try:
                     req.add_header('Authorization', 'Bearer ' + self.config['wiki_api_token'])
-                except (ValueError, KeyError) as e:
+                except (ValueError, KeyError, TypeError) as e:
                     logger.exception("No wiki api token provided. Continuing without one.", exc_info=e)
 
                 response = urllib.request.urlopen(req)
