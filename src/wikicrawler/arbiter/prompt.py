@@ -297,18 +297,39 @@ class WikiPrompt(WikiScriptEngine):
 
                 case ['current']:
                     print(self.pointer['selection'])
-                case ['show', *amount]:
+                case ['show', amount]:
                     try:
                         try:
-                            amount = float(amount[0])
+                            amount = float(amount)
                         except (IndexError, ValueError):
-                            amount = .05
+                            amount = .1
                 
                         self.analyze_page_wrapper(self.crawl_state['pages'][self.pointer['selection']], amount=amount, printing=True)
                     except KeyError:
                         print("No selection to show.")
 
-                case ['sentences', start, stop]:
+                case ['sents', *_start_stop]:
+                    # parse start and stop - `st sents [start|'-'|None] [stop|'-'|None]`
+                    try:
+                        start, stop = _start_stop
+                    except ValueError:
+                        if len(_start_stop) == 1:
+                            start, stop = _start_stop[0], None
+                        else:
+                            start, stop = None, None
+
+                    # store the last start and stop
+                    if start is not None and start != '-':
+                        self._sentences_start = start
+                    if stop is not None and stop != '-':
+                        self._sentences_stop = stop
+
+                    # replace with last start and stop if not specified
+                    if start is None or start == '-':
+                        start = self._sentences_start
+                    if stop is None or stop == '-':
+                        stop = self._sentences_stop
+
                     paragraphs = "".join(self.crawl_state['pages'][self.pointer['selection']]['paragraphs'])
                     sentences = nltk.sent_tokenize(paragraphs)
 

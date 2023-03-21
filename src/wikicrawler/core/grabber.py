@@ -78,6 +78,9 @@ class WikiGrabber:
 
         self.fetches = []
 
+        # internal
+        self.__shown_no_token_warning = False
+
     def limit(self, t=5, limit=3):
         """
         Checks if the number of fetches in the last t seconds is greater than the limit.
@@ -126,7 +129,9 @@ class WikiGrabber:
                 try:
                     req.add_header('Authorization', 'Bearer ' + self.config['wiki_api_token'])
                 except (ValueError, KeyError, TypeError) as e:
-                    logger.exception("No wiki api token provided. Continuing without one.", exc_info=e)
+                    if not self.__shown_no_token_warning:
+                        self.__shown_no_token_warning = True
+                        logger.exception("No wiki api token provided. Continuing without one.", exc_info=e)
 
                 response = urllib.request.urlopen(req)
                 url = response.geturl()
