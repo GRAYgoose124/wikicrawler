@@ -47,6 +47,6 @@ class MarkdownBuilder:
                     top5 = "_".join(top5)
                 content += f"#{top5}\n"
 
-        with open(page_dir + f"/{page['title'].translate(str.maketrans('', '', ':'))}.md", 'w') as f:
+        with open(page_dir + f"/{page['title'].translate(str.maketrans('', '', ':'))}.md", 'w', encoding='utf-8') as f:
             f.write(content)
 

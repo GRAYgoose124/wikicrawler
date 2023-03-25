@@ -13,7 +13,12 @@ Currently it has a simple command line interface which you can access through th
 ## 2. Build and Install
 ### 2a. Normal
     poetry install
+### Graphviz
+Please use conda to install graphviz on windows:
 
+    conda install graphviz
+    conda install python-graphviz
+    
 # Run
 ## Start
 To start the app run after install: (use a venv!)

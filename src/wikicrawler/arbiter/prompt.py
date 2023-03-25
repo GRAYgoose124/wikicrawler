@@ -297,10 +297,15 @@ class WikiPrompt(WikiScriptEngine):
 
                 case ['current']:
                     print(self.pointer['selection'])
-                case ['show', amount]:
+                case ['show', *amount]:
                     try:
                         try:
-                            amount = float(amount)
+                            if len(amount) == 1:
+                                amount = amount[0]
+                                amount = float(amount)
+                            else:
+                                amount = .1
+
                         except (IndexError, ValueError):
                             amount = .1
                 
