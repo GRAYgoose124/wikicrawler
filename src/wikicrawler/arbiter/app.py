@@ -2,12 +2,12 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 import time
+import logging
 
 from textual.app import App, ComposeResult
 from textual.widgets import Footer, Header, Input, TextLog, DataTable, Static
 from textual.containers import Horizontal, Vertical
 from textual.keys import Keys
-from textual.reactive import reactive
 from textual_autocomplete._autocomplete import InputState, AutoComplete, DropdownItem, Dropdown
 
 from .prompt import WikiPrompt
@@ -19,14 +19,16 @@ from ..core.utils.config import init_config
 class AsyncCLI(App):
     CSS_PATH = "utils/app.css"
 
-    def __init__(self):
+    def __init__(self, parent_logger=None):
         super().__init__()
+        self.logger = parent_logger.getChild(__name__) if parent_logger is not None else logging.getLogger(__name__)
+
         self.executor = ThreadPoolExecutor()
         
         self.config = init_config()
-        self.cacher = WikiCacher(self.config).start()
-        self.crawler = WikiCrawler(self.config, cacher=self.cacher)
-        self.prompt = WikiPrompt(self.config, self.crawler, cacher=self.cacher)
+        self.cacher = WikiCacher(self.config, parent_logger=self.logger).start()
+        self.crawler = WikiCrawler(self.config, cacher=self.cacher, parent_logger=self.logger)
+        self.prompt = WikiPrompt(self.config, self.crawler, cacher=self.cacher, parent_logger=self.logger)
 
         self.textlog = None
         self.input = None
@@ -36,7 +38,6 @@ class AsyncCLI(App):
         super().run()
 
         self.input.focus()
-
 
     def setup(self):
         self.textlog = TextLog(classes="box", id="textlog")
@@ -68,7 +69,19 @@ class AsyncCLI(App):
             self.input.value = ""
 
     def done_callback(self, fut):
-        self.textlog.write(f"{fut.result()=}")
+        results = fut.result()
+        if results is not None:
+            self.logger.info(f"{results}")
+            if isinstance(results, str):
+                [self.textlog.write(line) for line in results.split("\n")]
+            elif isinstance(results, list):
+                for i, line in enumerate(results):
+                    self.textlog.write(f"{i}: {line}")
+            elif isinstance(results, dict):
+                self.dataview.add_columns(*results.keys())
+                self.dataview.add_row(results.values())
+            else:
+                self.textlog.write(results) # TODO: custom page display similar to analyze_page_wrapper/print_results
 
     def _get_completions(self, input_state: InputState):
         return [DropdownItem("test", "2", "3")]
@@ -76,11 +89,17 @@ class AsyncCLI(App):
     def run_cmd(self, cmd):
         print(f"Running command: {cmd}")
 
-        self.prompt.parse_cmd(cmd, interactive=True)
+        if cmd == "exit":
+            self.exit()
 
-    def exit(self, result, message) -> None:
+        results = self.prompt.parse_cmd(cmd, interactive=True)
+        self.logger.info(f"{results}")
+        return results
+    
+
+    def exit(self) -> None:
         self.cacher.close()
-        return super().exit(result, message)
+        return super().exit()
 
 
 if __name__ == "__main__":

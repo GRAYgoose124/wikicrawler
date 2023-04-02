@@ -7,7 +7,7 @@ from nltk.metrics.distance import jaro_winkler_similarity
 
 
 from ..core.crawler import WikiCrawler
-from ..core.sentiment.paragraph import print_sentiment
+from ..core.sentiment.paragraph import print_sentiment # TODO: Substitute with textual compatible version.
 
 from .oracle import Oracle
 from .utils.search import print_results
@@ -17,12 +17,9 @@ from .utils.console import console
 from .seer import Seer
 
 
-logger = logging.getLogger(__name__)
-
-
 class WikiPrompt(WikiScriptEngine):
-    def __init__(self, config, crawler, cacher=None):
-        super().__init__(config, crawler, cacher=cacher)
+    def __init__(self, config, crawler, cacher=None, parent_logger=None):
+        super().__init__(config, crawler, cacher=cacher, parent_logger=parent_logger)
 
         self.oracle = Oracle(self, cacher=cacher)
         self.seer = Seer(self, cacher=cacher)
@@ -43,7 +40,7 @@ class WikiPrompt(WikiScriptEngine):
         elif topic == 'most_similar_freq':
             topic = self.pointer['most_similar_freq']
 
-        logger.debug(f"Search: {topic}")
+        self.logger.debug(f"Search: {topic}")
 
         results = list(self.crawler.search(topic, precache=self.search_precaching))
 
@@ -51,6 +48,7 @@ class WikiPrompt(WikiScriptEngine):
             self.analyze_page_wrapper(results[0][1], printing=interactive)
 
         self.crawl_state['last_search'] = results
+        return results
 
     def handle_url(self, urls):
         """ Retrieve a page from a URL and update the crawl state.
@@ -63,7 +61,7 @@ class WikiPrompt(WikiScriptEngine):
                 # TODO: Does this need a rate limit?
                 page = self.crawler.retrieve(url)
 
-                self.analyze_page_wrapper(page, printing=False)
+                return self.analyze_page_wrapper(page, printing=False)
             else:
                 print("Invalid Wikipedia url.")
     
@@ -78,7 +76,7 @@ class WikiPrompt(WikiScriptEngine):
         """
         # st colloc
         if len(phrase) == 0:
-            print_results([" ".join(x) for x in state['stats']['collocations']])
+            return [" ".join(x) for x in state['stats']['collocations']] # TODO: used to use print_results, mimic that behaviour.
         # st colloc <phrase>
         else:
             phrase = " ".join(phrase)
@@ -92,7 +90,8 @@ class WikiPrompt(WikiScriptEngine):
                     most_similar = (similarity, colloc)
 
             self.pointer['most_similar_colloc'] = most_similar[1]
-            logger.debug(f"Most similar collocation: {most_similar[1]}")
+            self.logger.debug(f"Most similar collocation: {most_similar[1]}")
+            return most_similar[1]
 
     def handle_state_freq(self, state, phrase):
         """ Handle the state command for finding most similar frequent phrases, in particular, it sets XAthe most_similar_freq pointer.
@@ -103,7 +102,7 @@ class WikiPrompt(WikiScriptEngine):
         """
         # st freq
         if len(phrase) == 0:
-            print_results(state['stats']['frequencies'])
+            return state['stats']['frequencies'] # TODO: used to use print_results, mimic that behaviour.
         # st freq <phrase>
         else:
             phrase = " ".join(phrase)
@@ -117,7 +116,8 @@ class WikiPrompt(WikiScriptEngine):
                     most_similar = (similarity, freq)
 
             self.pointer['most_similar_freq'] = most_similar[1]
-            logger.debug(f"Most similar frequency: {most_similar[1]}")
+            self.logger.debug(f"Most similar frequency: {most_similar[1]}")
+            return most_similar[1]
 
     def handle_state_seealso(self, state, idx):
         """ Handle the state command for see also links.
@@ -131,10 +131,10 @@ class WikiPrompt(WikiScriptEngine):
             selection = list(state['see_also'].values())[idx]
 
             page = self.crawler.retrieve(selection)
-            self.analyze_page_wrapper(page)
+            return self.analyze_page_wrapper(page)
         # st sa
         except (ValueError, TypeError, IndexError) as e:
-            print_results(list(state['see_also'].keys()))
+            return list(state['see_also'].keys())  # TODO: used to use print_results, mimic that behaviour.
 
     def handle_state_links(self, state, idx):
         """ Handle the state command for getting and viewing links.
@@ -149,32 +149,31 @@ class WikiPrompt(WikiScriptEngine):
                 pgidx = int(idx[0])
                 idx = int(idx[1])
             except ValueError:
-                print("Invalid indices to paragraph link.")    
-                print(list(state['paragraph_links'][pgidx].values()))
+                self.logger.error("Invalid indices to paragraph link.")    
+                self.logger.debug(list(state['paragraph_links'][pgidx].values()))
                 return
 
             selection = list(state['paragraph_links'][pgidx].values())[idx]
 
             page = self.crawler.retrieve(selection)
 
-            self.analyze_page_wrapper(page)
+            return self.analyze_page_wrapper(page) # TODO: handle analyze_page_wrapper
         # st links <idx> - equivalent to st links -1 <idx>
         elif len(idx) == 1:
             try:
                 idx = int(idx[0])
-                print_results(list(state['paragraph_links'][idx].keys()))
+                return list(state['paragraph_links'][idx].keys()) # TODO: used to use print_results, mimic that behaviour.
             except ValueError:
-                logger.debug("Invalid index to paragraph link. Did you enter a number?")
+                self.logger.debug("Invalid index to paragraph link. Did you enter a number?")
         # st links - list
         else:
             try:
                 for idx, para in enumerate(state['paragraph_links']):
-                    print(f"---\t{idx}\t---")
                     if len(para) == 0:
                         continue
-                    print_results(list(para.keys()))
+                    return idx, list(para.keys()) # TODO: used to use print_results, mimic that behaviour.
             except TypeError as e:
-                logger.debug(f'No paragraph links found. Is state set? {state}', exc_info=e)
+                self.logger.debug(f'No paragraph links found. Is state set? {state}', exc_info=e)
 
     def handle_state_hist(self, state, idx):
         """ Handle the state command for getting and viewing history of page traversal.
@@ -185,16 +184,15 @@ class WikiPrompt(WikiScriptEngine):
     """
         # st list
         if len(idx) == 0:
-            print_results(list(self.crawl_state['pages'].keys()))
+            return list(self.crawl_state['pages'].keys()) # TODO: used to use print_results, mimic that behaviour.
         # st list <idx>
         else:
             try:
-                idx = int(idx[0])
-                state = self.crawl_state['pages'][self.crawl_state['page_stack'][idx]]
+                state = self.crawl_state['pages'][list(self.crawl_state['pages'].keys())[int(idx[0])]]
 
-                self.analyze_page_wrapper(state, printing=False)
+                return self.analyze_page_wrapper(state, printing=False) # TODO: handle analyze_page_wrapper
             except ValueError as e:
-                logger.debug("Invalid index to page list.", exc_info=e)
+                self.logger.debug("Invalid index to page list.", exc_info=e)
                         
     def handle_state_found(self, state, idx):
         """ Handle the state command for getting and viewing found pages during searches.
@@ -213,7 +211,7 @@ class WikiPrompt(WikiScriptEngine):
             else:
                 last_search = self.crawl_state['last_search']
 
-            print_results(last_search)
+            return last_search  # TODO: used to use print_results, mimic that behaviour.
         # st found <idx>
         else:
             if len(self.crawl_state['last_search']) == 1:
@@ -224,14 +222,14 @@ class WikiPrompt(WikiScriptEngine):
                 except IndexError as e:
                     # TODO/FIX: Somehow when cmoving from autosearch, the idx can be out of range.
                     # I believe this is when there are no search results.
-                    logger.exception(f"Invalid index to found page. {idx[0]}, {len(self.crawl_state['last_search'])}", exc_info=e)
+                    self.logger.exception(f"Invalid index to found page. {idx[0]}, {len(self.crawl_state['last_search'])}", exc_info=e)
                     return
 
             # TODO: Consolidate, frayed logic consequence?
             if isinstance(page, tuple):
                 page = page[1]
         
-            self.analyze_page_wrapper(page)
+            return self.analyze_page_wrapper(page)  # TODO: handle analyze_page_wrapper
 
     def handle_state(self, subcmd):
         """
@@ -265,7 +263,7 @@ class WikiPrompt(WikiScriptEngine):
             st show <amount> - analyze current page with <amount> of page. (float for percentage, int for number of sentences)
             st current - show current page title
 
-            st sentences <start> <end> - analyze current page with sentences from <start> to <end>
+            st sents <start> <end> - analyze current page with sentences from <start> to <end>
             
             st save - save current page to file
             st delete - delete current page from file
@@ -275,24 +273,24 @@ class WikiPrompt(WikiScriptEngine):
         try:
             state = self.crawl_state['pages'][self.pointer['selection']]
         except (IndexError, KeyError):
-            logger.debug("No page selected.")
+            self.logger.debug("No page selected.")
             return
 
         try:
             match subcmd:
                 case ['colloc', *phrase]:
-                    self.handle_state_colloc(state, phrase)
+                    return self.handle_state_colloc(state, phrase)
                 case ['freq', *phrase]:
-                    self.handle_state_freq(state, phrase)
+                    return self.handle_state_freq(state, phrase)
 
                 case ['sa', *idx]:
-                    self.handle_state_seealso(state, idx)
+                    return self.handle_state_seealso(state, idx)
                 case ['links', *idx]:
-                    self.handle_state_links(state, idx)
+                    return self.handle_state_links(state, idx)
                 case ['hist', *idx]:
-                    self.handle_state_hist(state, idx)
+                    return self.handle_state_hist(state, idx)
                 case ['found', *idx]:
-                    self.handle_state_found(state, idx)
+                    return self.handle_state_found(state, idx)
 
                 case ['pop']:
                     self.pointer['selection'] = self.crawl_state['page_stack'].pop()
@@ -301,7 +299,7 @@ class WikiPrompt(WikiScriptEngine):
                     self.crawl_state['page_stack'].append(self.crawl_state['pop_stack'].pop())
 
                 case ['current']:
-                    print(self.pointer['selection'])
+                    return self.pointer['selection']
                 case ['show', *amount]:
                     try:
                         try:
@@ -314,9 +312,9 @@ class WikiPrompt(WikiScriptEngine):
                         except (IndexError, ValueError):
                             amount = .1
                 
-                        self.analyze_page_wrapper(self.crawl_state['pages'][self.pointer['selection']], amount=amount, printing=True)
+                        return self.analyze_page_wrapper(self.crawl_state['pages'][self.pointer['selection']], amount=amount, printing=True)
                     except KeyError:
-                        print("No selection to show.")
+                        return "No selection to show."
 
                 case ['sents', *_start_stop]:
                     # parse start and stop - `st sents [start|'-'|None] [stop|'-'|None]`
@@ -344,21 +342,21 @@ class WikiPrompt(WikiScriptEngine):
                     sentences = nltk.sent_tokenize(paragraphs)
 
                     self.pointer['selected_text'] = sentences[int(start):int(stop)]
-                    print_sentiment(self.pointer['selected_text'])
+                    return self.pointer['selected_text']  # TODO: used to use print_sentiment, mimic that behaviour.
                 
                 case ['save']:
-                    self.save_state()
+                    return self.save_state()
                 case ['del']:
-                    self.del_state()
+                    return self.del_state()
 
                 case ['help']:
-                    print(self.handle_state.__doc__)
+                    return self.handle_state.__doc__
 
                 case _:
                     return False
             return True
         except (ValueError, IndexError) as e:
-            logger.exception("Handle_state choice error.", exc_info=e)
+            self.logger.exception("Handle_state choice error.", exc_info=e)
 
 
     def parse_cmd(self, command, interactive=False):
@@ -384,40 +382,35 @@ class WikiPrompt(WikiScriptEngine):
             help - print help
             exit - exit cli
         """
-        logger.debug(command)
+        self.logger.debug(command)
 
         match command.split():
             case ['s', *phrase]: 
                 if len(phrase) != 0:
-                    self.handle_search(" ".join(phrase), interactive=interactive)
+                    return self.handle_search(" ".join(phrase), interactive=interactive)
 
             case ['u', *url]:
-                self.handle_url(url)
+                return self.handle_url(url)
 
             case ['st', *subcmd]:
-                self.handle_state(subcmd)
+                return self.handle_state(subcmd)
 
             case ['o' | 'oracle', *cmd]:
-                self.oracle.parse_cmd(cmd)
+                return self.oracle.parse_cmd(cmd)
 
             case ['seer', *cmd]:
                 self.seer.parse_cmd(cmd)
 
             case ['pointer']:
-                print(self.pointer)
+                return self.pointer
             case ['state']:
-                print(self.crawl_state)
+                return self.crawl_state
 
             case ['help']:
                 # TODO: Read from source.
-                print(self.parse_cmd.__doc__, sep='\n')
-            case ['exit']:
-                print("Goodbye!")
-
+                return self.parse_cmd.__doc__
             case ['newf', name]:
-                self.cmd_func_init(name)
+                return self.cmd_func_init(name)
 
             case _: 
-                print(f"Unknown command: {command}")
-                return False
-        return True
+                return f"Unknown command: {command}"

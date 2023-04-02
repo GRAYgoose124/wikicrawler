@@ -11,7 +11,9 @@ class PageCacher:
 
     It can be extended to use other databases, or other caching methods. TODO: csv/json backends.
     """
-    def __init__(self, config):
+    def __init__(self, config, parent_logger=None):
+        self.logger = parent_logger.getChild(__name__) if parent_logger is not None else logging.getLogger(__name__)
+        
         self.config = config
         self._manager = None
         self.hooks = []

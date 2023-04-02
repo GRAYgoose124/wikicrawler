@@ -25,9 +25,6 @@ from .db.cacher import WikiCacher
 from .utils.model_to_dict import model_to_dict
 
 
-logger = logging.getLogger(__name__)
-
-
 def media_retrieve_wrapper(dl_url, save_loc):
     try:
         urllib.request.urlretrieve(dl_url, save_loc)
@@ -49,13 +46,15 @@ class WikiGrabber:
     link_regex = re.compile("^https*://.*\..*")
     header_regex = re.compile('^h[1-6]$')
 
-    def __init__(self, config, cacher=None):
+    def __init__(self, config, cacher=None, parent_logger=None):
         """ Initializes the WikiGrabber class.
 
         Args:
             config (dict): The configuration dictionary. 
             cacher (WikiCacher): The cacher to use. If none is provided, no caching is performed.
         """
+        self.logger = parent_logger.getChild(__name__) if parent_logger else logging.getLogger(__name__)
+
         self.config = config
         self.cacher = cacher
 
@@ -64,7 +63,7 @@ class WikiGrabber:
         self.process_media_links = config['process_media_links']
         self.media_save_location = config['data_root'] + config['media_folder']
     
-        logger.debug(" -- Config Settings -- " +
+        self.logger.debug(" -- Config Settings -- " +
                      f"\n\tMedia saving: {self.save_media}" +
                      f"\n\t\tMedia save location: {self.media_save_location}" +
                      f"\n\t\tMedia processing: {self.process_media_links}" +
@@ -131,18 +130,18 @@ class WikiGrabber:
                 except (ValueError, KeyError, TypeError) as e:
                     if not self.__shown_no_token_warning:
                         self.__shown_no_token_warning = True
-                        logger.exception("No wiki api token provided. Continuing without one.", exc_info=e)
+                        self.logger.exception("No wiki api token provided. Continuing without one.", exc_info=e)
 
                 response = urllib.request.urlopen(req)
                 url = response.geturl()
 
                 page = response.read().decode("utf-8")
             except urllib.error.HTTPError as e:
-                logger.debug(f"{url} is invalid?", exc_info=e)
+                self.logger.debug(f"{url} is invalid?", exc_info=e)
                 # sleep(3)
                 # return self.fetch(url)
             except urllib.error.URLError as e:
-                logger.debug(f"{url} timed out.", exc_info=e)
+                self.logger.debug(f"{url} timed out.", exc_info=e)
                 #sleep(3)
                 #return self.fetch(url)
         else:
@@ -153,7 +152,7 @@ class WikiGrabber:
             page_struct.url = url
             return page_struct
         except TypeError as e:
-            logger.debug(f"Failed to parse {url} - likely throttled.", exc_info=e)
+            self.logger.debug(f"Failed to parse {url} - likely throttled.", exc_info=e)
             return None
 
     def retrieve(self, url, page=None):
@@ -215,7 +214,7 @@ class WikiGrabber:
         try:
             content_text = page.find(id='mw-content-text')
         except AttributeError as e:
-            logger.exception(f'Page not set: {page}', exc_info=e)
+            self.logger.exception(f'Page not set: {page}', exc_info=e)
             return paragraphs, paragraph_links
         
         body_start = content_text.find(attrs={'class': 'mw-parser-output'})
@@ -228,7 +227,7 @@ class WikiGrabber:
                 links = {x.text: "https://en.wikipedia.org" + x['href'] for x in filter(None, [a if a['href'].startswith('/wiki') else None for a in pa.find_all('a')])}
                 paragraph_links.append(links)
         except (AttributeError, KeyError) as e:
-            logger.debug("Missing mw-parser-output - Is this even a wiki page?", exc_info=e)
+            self.logger.debug("Missing mw-parser-output - Is this even a wiki page?", exc_info=e)
 
         return paragraphs, paragraph_links
 
@@ -246,7 +245,7 @@ class WikiGrabber:
                 _, name = li.a.get_text().split(' ', 1)
                 links[name] = page.url + li.a.get('href')
         except AttributeError as e:
-            logger.debug("Missing toc?")
+            self.logger.debug("Missing toc?")
 
         return links
 
@@ -264,7 +263,7 @@ class WikiGrabber:
         try:
             ref_body = content_text.select('.references')[0]
         except IndexError as e:
-            logger.debug(f"No references.")
+            self.logger.debug(f"No references.")
             return references # Improperly formatted wiki pages, doesn't have .references.
 
         for child in ref_body.children:
@@ -289,7 +288,7 @@ class WikiGrabber:
         try:
             sa_soup = content_text.select('.div-col')[0]
         except IndexError as e:
-            logger.debug("No see also?")
+            self.logger.debug("No see also?")
 
             return see_also
 
@@ -298,7 +297,7 @@ class WikiGrabber:
                 try:
                     see_also[a['title']] = "https://en.wikipedia.org" + a['href']
                 except KeyError as e:
-                    logger.debug(f"No title for see also link? {a}")
+                    self.logger.debug(f"No title for see also link? {a}")
         return see_also
 
     def __get_media(self, page):
@@ -320,7 +319,7 @@ class WikiGrabber:
         dl_urls = []
 
         if self.process_media_links:
-            logger.debug("Downloading page media... (This may take a moment.)")
+            self.logger.debug("Downloading page media... (This may take a moment.)")
             for img in page.find_all('a', attrs={'class': "image"}):
                 url = 'https://en.wikipedia.org/' + img['href']
                 # TODO: Fix worker thread blocking.
@@ -343,10 +342,10 @@ class WikiGrabber:
                 for dl_url, save_loc in zip(dl_urls, save_locs):
                     p = partial(media_retrieve_wrapper, dl_url, save_loc)
                     t = threading.Thread(target=p, daemon=True)
-                    logger.debug(f"Started downloading {dl_url}.")
+                    self.logger.debug(f"Started downloading {dl_url}.")
                     t.start()
             except urllib.error.HTTPError:
-                logger.debug(f"Failed to download media from {dl_url}")
+                self.logger.debug(f"Failed to download media from {dl_url}")
                 sleep(1)
 
         return dl_urls

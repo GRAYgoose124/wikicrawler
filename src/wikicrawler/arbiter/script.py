@@ -15,11 +15,11 @@ from typing import Callable
 from ..core.sentiment.paragraph import analyze_page
 from .utils.console import console
 
-logger = logging.getLogger(__name__)
-
 
 class WikiScriptEngine:
-    def __init__(self, config, crawler, cacher=None):
+    def __init__(self, config, crawler, cacher=None, parent_logger=None):
+        self.logger = parent_logger.getChild(__name__) if parent_logger is not None else logging.getLogger(__name__)
+
         self.config = config
 
         self.crawler = crawler
@@ -100,7 +100,7 @@ class WikiScriptEngine:
         try:
             with open(self.prompt_dir + f"/{self.config['prompt_state']}.json", 'w') as f:
                 if not hasattr(self, 'crawl_state'):
-                    logger.error('crawl_state not defined - crash?')
+                    self.logger.error('crawl_state not defined - crash?')
                     return
 
                 # TODO: make last search just have links in the first place?
@@ -116,7 +116,7 @@ class WikiScriptEngine:
             with open(self.prompt_dir + f"/{self.config['pointer_state']}.json", 'w') as f:
                 json.dump(self.pointer, f, indent=2)
         except FileNotFoundError as e:
-            logger.debug("Files probably deleted while system was running", exc_info=e)
+            self.logger.debug("Files probably deleted while system was running", exc_info=e)
 
     def cmd_func_init(self, name, lines=None):
         """ This function is used to initialize a function from script/interactive mode.
@@ -189,9 +189,9 @@ class WikiScriptEngine:
             for command in script_or_path:
                 # command is a lambda to delay execution until now.
                 if isinstance(command, Callable):
-                    logger.debug("Running delayed command: {}".format(command))
+                    self.logger.debug("Running delayed command: {}".format(command))
                     command = command()
-                    logger.debug("Command: {}".format(command))
+                    self.logger.debug("Command: {}".format(command))
 
                 self.parse_cmd(command)
 
@@ -209,7 +209,7 @@ class WikiScriptEngine:
         
         Updates the selection pointer and user choice stack.
         """
-        logger.debug(f"selection_wrapper: {page['title']}")
+        self.logger.debug(f"selection_wrapper: {page['title']}")
 
         self.crawl_state['user_choice_stack'].append(page['title'])
         self.pointer['selection'] = page['title']
@@ -230,14 +230,14 @@ class WikiScriptEngine:
         
         try:
             if isinstance(page, Callable):
-                logger.debug(f"Unpacked page tuple. {page}")
+                self.logger.debug(f"Unpacked page tuple. {page}")
                 page = page()
             elif isinstance(page, tuple) and isinstance(page[1], Callable):
                 page = page[1]()
             elif isinstance(page, str):
                 page = self.crawler.retrieve(page)
         except Exception as e:
-            logger.debug(f"uh? page was {page}", exc_info=e)
+            self.logger.debug(f"uh? page was {page}", exc_info=e)
                 
         if printing or 'stats' not in page:
             page_tuple = analyze_page(page, printing=printing, amount=amount)
@@ -250,4 +250,4 @@ class WikiScriptEngine:
         self.page_wrapper(page)
         self.selection_wrapper(page)
 
-        return page_tuple
+        return page_tuple or page
