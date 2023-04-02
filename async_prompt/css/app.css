@@ -1,0 +1,12 @@
+Screen {
+    layout: vertical;
+}
+
+.box {
+    height: 1fr;
+    border: solid green;
+}
+
+.input {
+    border: solid green;
+}

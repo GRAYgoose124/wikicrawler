@@ -7,7 +7,7 @@ import os
 
 from prompt_toolkit.patch_stdout import patch_stdout
 from rich.prompt import Prompt
-
+from rich.live import Live
 
 
 # For command history
@@ -160,7 +160,8 @@ class WikiScriptEngine:
         command = ""
         with ThreadPoolExecutor() as pool:
             while True:
-                command = input("> ")
+                with patch_stdout(raw=True):
+                    command = input("> ")
 
                 if command == 'exit':
                     break

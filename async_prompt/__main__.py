@@ -3,21 +3,40 @@ from concurrent.futures import ThreadPoolExecutor
 
 import time
 
-from prompt_toolkit import PromptSession
-from prompt_toolkit.patch_stdout import patch_stdout
+from textual.app import App, ComposeResult
+from textual.widgets import Footer, Header, Input, TextLog
+from textual.keys import Keys
 
-
-class AsyncCLI:
+class AsyncCLI(App):
+    CSS_PATH = "css/app.css"
     def __init__(self):
-        self.loop = asyncio.get_event_loop()
+        super().__init__()
+        self.executor = ThreadPoolExecutor()
+        
+        self.textlog = None
+        self.input = None
 
-    async def run(self):
-        session = PromptSession()
+    def compose(self) -> ComposeResult:
+        self.textlog = TextLog(classes="box")
+        self.input = Input(classes="input")
+
+        yield self.textlog
+        yield self.input
+
+    def on_key(self, event):
+        if event.key == Keys.Enter:
+            self.textlog.write(f"> {self.input.value}")
+            self.executor.submit(self.run_cmd, self.input.value)
+            self.input.value = ""
+        else:
+            if event.is_printable:
+                self.input.insert_text_at_cursor(event.key)
+
+    async def loop(self):
         with ThreadPoolExecutor() as pool:
             while True:
                 try:
-                    with patch_stdout():
-                        cmd = await session.prompt_async("> ")
+                    cmd = input()
                 except KeyboardInterrupt:
                     print("Exiting...")
                     break
@@ -39,5 +58,4 @@ class AsyncCLI:
 
 if __name__ == "__main__":
     cli = AsyncCLI()
-    cli.loop.run_until_complete(cli.run())
-    cli.loop.close()
+    cli.run()
