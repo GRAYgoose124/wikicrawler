@@ -5,10 +5,6 @@ import json
 import logging
 import os
 
-from prompt_toolkit.patch_stdout import patch_stdout
-from rich.prompt import Prompt
-from rich.live import Live
-
 
 # For command history
 if os.name == 'posix':
@@ -28,6 +24,7 @@ class WikiScriptEngine:
 
         self.crawler = crawler
         self.cacher = cacher
+
         if cacher is not None:
             cacher.register_hook(self.save_state)
 
@@ -160,8 +157,7 @@ class WikiScriptEngine:
         command = ""
         with ThreadPoolExecutor() as pool:
             while True:
-                with patch_stdout(raw=True):
-                    command = input("> ")
+                command = input("> ")
 
                 if command == 'exit':
                     break

@@ -1,19 +1,15 @@
 import nltk
 import logging
 
-from ..core.crawler import WikiCrawler
-from ..core.db.cacher import WikiCacher
-from ..core.utils.config import init_config
 
-from .prompt import WikiPrompt
-from ..seer.markdown import MarkdownBuilder
+from .app import AsyncCLI
 
-logging.basicConfig(format='%(name)s:%(lineno)d::%(levelname)s> %(message)s', level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+
 
 
 def main():
-    config = init_config()
+    logging.basicConfig(format='%(name)s:%(lineno)d::%(levelname)s> %(message)s', level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
 
     try:
         nltk.download('wordnet')
@@ -21,14 +17,8 @@ def main():
     except KeyboardInterrupt:
         pass
     
-    with WikiCacher(config) as wc:
-        crawler = WikiCrawler(config, cacher=wc)
-        prompt = WikiPrompt(config, crawler, cacher=wc)
-
-        logger.info("Arbiter started, enjoy your tumble.")
-        prompt.start()
-
+    app = AsyncCLI()
+    app.run()
 
 if __name__ == '__main__':
-    
     main()

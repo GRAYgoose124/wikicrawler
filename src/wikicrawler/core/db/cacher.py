@@ -13,7 +13,7 @@ class PageCacher:
     """
     def __init__(self, config):
         self.config = config
-        self.manager = None
+        self._manager = None
         self.hooks = []
 
         self.db_path = config['data_root'] + f"/databases/{config['db_file']}"
@@ -21,20 +21,30 @@ class PageCacher:
         if not os.path.exists(config['data_root'] + "/databases"):
             os.makedirs(config['data_root'] + "/databases")
 
+    @property
+    def manager(self):
+        return self._manager
+
     def __enter__(self):
+        return self.start()
+    
+    def start(self):
         # Dummy implementation, see db.py for more info. 
         if self.manager is None:
-            self.manager = DBMan(DBPageEntry, self.db_name, self.db_path)
-            
+            self._manager = DBMan(DBPageEntry, self.db_path)
+        
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def close(self):
         self.manager.close()
-        self.manager = None
+        self._manager = None
 
         # note: for unifying/ensuring/syncronizing all save operations.
         for hook in self.hooks:
             hook()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     def __contains__(self, url):
         try:
@@ -70,6 +80,6 @@ class DBWikiPageEntry(DBPageEntry, Base):
 class WikiCacher(PageCacher):
     """ The WikiCacher is a specialized PageCacher that caches wikipedia pages only.
     """
-    def __enter__(self):
-        self.manager = DBMan(DBWikiPageEntry, self.db_path)
+    def start(self):
+        self._manager = DBMan(DBWikiPageEntry, self.db_path)
         return self

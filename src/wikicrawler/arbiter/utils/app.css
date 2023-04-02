@@ -1,0 +1,20 @@
+Screen {
+    layout: vertical;
+}
+
+.box {
+    height: 1fr;
+    border: hidden;
+    width: 50%;
+}
+
+.input {
+    border: hidden;
+    max-height: 3;
+}
+
+.column {
+    layout: horizontal;
+    overflow: auto;
+    border: hidden;
+}

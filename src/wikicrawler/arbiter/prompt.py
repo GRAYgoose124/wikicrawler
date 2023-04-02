@@ -20,14 +20,14 @@ from .seer import Seer
 logger = logging.getLogger(__name__)
 
 
-
-
 class WikiPrompt(WikiScriptEngine):
     def __init__(self, config, crawler, cacher=None):
         super().__init__(config, crawler, cacher=cacher)
 
         self.oracle = Oracle(self, cacher=cacher)
         self.seer = Seer(self, cacher=cacher)
+
+        self.commands = {}
     
     def handle_search(self, topic, interactive=True):
         """ Search for a topic and update the crawl state.
