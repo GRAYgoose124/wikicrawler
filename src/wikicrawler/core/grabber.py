@@ -171,6 +171,8 @@ class WikiGrabber:
 
         if page is None:
             page = self.fetch(url)
+            if page is None:
+                return { 'url': url, 'title': None, 'paragraphs': [], 'paragraph_links': [], 'see_also': [], 'toc_links': [], 'references': [], 'media': []}
 
         paragraphs, para_links = self.__paragraphs(page)
 
@@ -214,6 +216,8 @@ class WikiGrabber:
             content_text = page.find(id='mw-content-text')
         except AttributeError as e:
             logger.exception(f'Page not set: {page}', exc_info=e)
+            return paragraphs, paragraph_links
+        
         body_start = content_text.find(attrs={'class': 'mw-parser-output'})
         try:
             for pa in body_start.find_all('p'):     

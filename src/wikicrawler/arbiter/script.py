@@ -1,7 +1,15 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 import json
 import logging
 import os
+
+from prompt_toolkit.patch_stdout import patch_stdout
+from rich.prompt import Prompt
+
+
+
 # For command history
 if os.name == 'posix':
     import readline
@@ -9,7 +17,7 @@ from io import TextIOWrapper
 from typing import Callable
 
 from ..core.sentiment.paragraph import analyze_page
-
+from .utils.console import console
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +132,7 @@ class WikiScriptEngine:
         # interactive function define
         if lines is None:
             while True:
-                line = input("\t")
+                line = input("...\t")
                 if line == 'end':
                     break
 
@@ -141,15 +149,23 @@ class WikiScriptEngine:
         This is a dummy implementation meant to be overridden by subclasses."""
         raise NotImplementedError("This method must be implemented by a subclass.")
 
-    def loop(self):
+    def start(self):
+        """ Start the prompt.
+        """
+        asyncio.run(self.loop())
+
+    async def loop(self):
         """ The main loop of the prompt.
         """
         command = ""
+        with ThreadPoolExecutor() as pool:
+            while True:
+                command = input("> ")
 
-        while command != "exit":
-            command = input("> ")
-            
-            self.parse_cmd(command, interactive=True)
+                if command == 'exit':
+                    break
+
+                fut = pool.submit(self.parse_cmd, command, interactive=True)
 
     # TODO: standardize interface
     def run_script(self, script_or_path):

@@ -23,7 +23,9 @@ class PageCacher:
 
     def __enter__(self):
         # Dummy implementation, see db.py for more info. 
-        self.manager = DBMan(DBPageEntry, self.db_name, self.db_path)
+        if self.manager is None:
+            self.manager = DBMan(DBPageEntry, self.db_name, self.db_path)
+            
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

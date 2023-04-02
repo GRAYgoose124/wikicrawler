@@ -15,6 +15,7 @@ rich = "^12.5.1"
 pylatexenc = "^2.10"
 networkx = "^2.8.6"
 matplotlib = "^3.6.0"
+prompt-toolkit = "^3.0.38"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.1.3"

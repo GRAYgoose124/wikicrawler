@@ -26,7 +26,7 @@ def main():
         prompt = WikiPrompt(config, crawler, cacher=wc)
 
         logger.info("Arbiter started, enjoy your tumble.")
-        prompt.loop()
+        prompt.start()
 
 
 if __name__ == '__main__':

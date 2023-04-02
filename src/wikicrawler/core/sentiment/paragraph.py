@@ -11,14 +11,14 @@ from nltk import BigramCollocationFinder, TrigramCollocationFinder, BigramAssocM
 from nltk.probability import FreqDist
 
 from rich import print
-from rich.console import Console
+
+
 from rich.color import Color
 from rich.highlighter import Highlighter
 
 from ..sentiment.utils.dict_add import add_dict
+from ...arbiter.utils.console import console
 
-
-console = Console()
 
 
 fillerwords = ['at', 'their', 'been', 'which', 'on', 

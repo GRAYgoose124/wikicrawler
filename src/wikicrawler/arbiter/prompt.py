@@ -4,6 +4,8 @@ import nltk
 from nltk.corpus import wordnet as wn
 from nltk.metrics.distance import jaro_winkler_similarity
 
+
+
 from ..core.crawler import WikiCrawler
 from ..core.sentiment.paragraph import print_sentiment
 
@@ -11,10 +13,13 @@ from .oracle import Oracle
 from .utils.search import print_results
 
 from .script import WikiScriptEngine
+from .utils.console import console
 from .seer import Seer
 
 
 logger = logging.getLogger(__name__)
+
+
 
 
 class WikiPrompt(WikiScriptEngine):
