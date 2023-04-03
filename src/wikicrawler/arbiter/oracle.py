@@ -5,8 +5,6 @@ from random import randint
 from .utils.frequency import get_highest_freq
 
 
-logger = logging.getLogger(__name__)
-
 
 class Oracle:
     """ TODO: Wrapper class and refactor oracle into sub-module.
@@ -17,7 +15,8 @@ class Oracle:
     and to provide a more natural language interface for the
     user to interact with the crawler.
     """
-    def __init__(self, prompt, cacher=None):
+    def __init__(self, prompt, cacher=None, parent_logger=None):
+        self.logger = parent_logger.getChild(__name__) if parent_logger is not None else logging.getLogger(__name__)
         self.prompt = prompt
 
         if cacher is not None:
@@ -65,6 +64,8 @@ class Oracle:
         ## logging.debug("Running script:\n\t{}".format('\n\t'.join(script))) TODO: DelayedExecution lambda wrapper?
         self.prompt.run_script(script)
 
+        return self.prompt.crawl_state['pages'][self.prompt.pointer['selection']]
+
     def handle_freq_move(self, n, jump_phrase):
         """
         Move to the first page that matches the nth most common frequency of the current page.
@@ -74,6 +75,7 @@ class Oracle:
                                 f"st found {n}"])
 
         # logger.debug(f"fmov proc: {jump_phrase}, {self.prompt.pointer['most_similar_freq']}, {self.prompt.crawl_state['last_search'][0]}")
+        return self.prompt.crawl_state['pages'][self.prompt.pointer['selection']]
 
     # TODO: refactor into file.
     def handle_colloc_move(self, n, jump_phrase):
@@ -84,6 +86,7 @@ class Oracle:
                                  "s most_similar_colloc",
                                 f"st found {n}"])
 
+        return self.prompt.crawl_state['pages'][self.prompt.pointer['selection']]
         # logger.debug(f"cmov proc: {jump_phrase}, {self.prompt.pointer['most_similar_colloc']}, {self.prompt.crawl_state['last_search'][0]}")
 
     # TODO: Oracle should compile a summarization of the crawl and user input.
@@ -106,32 +109,32 @@ class Oracle:
         """
         match command:
             case ['div']:
-                logger.debug('div proc')
+                self.logger.debug('div proc')
 
             case ['as', n, *start_phrase]:
                 try:
-                    self.handle_autosearch(' '.join(start_phrase), int(n))
+                    return self.handle_autosearch(' '.join(start_phrase), int(n))
                 except ValueError:
-                    logger.info("Invalid arguments for as command.")
+                    self.logger.info("Invalid arguments for as command.")
 
             case ['bas', n, *start_phrase]:
                 try:
-                    self.handle_autosearch(' '.join(start_phrase), int(n), hook="seer build")
+                    return self.handle_autosearch(' '.join(start_phrase), int(n), hook="seer build")
                 except ValueError:
-                    logger.info("Invalid arguments for bas command.")
+                    self.logger.info("Invalid arguments for bas command.")
 
             case ['cmov', n, *jump_phrase]:
                 try:
-                    self.handle_colloc_move(int(n), " ".join(jump_phrase))
+                    return self.handle_colloc_move(int(n), " ".join(jump_phrase))
                 except ValueError:
-                    logger.info("Invalid jump phrase or n")
+                    self.logger.info("Invalid jump phrase or n")
 
             case ['fmov', n, *jump_phrase]:
                 try:
-                    self.handle_freq_move(int(n), " ".join(jump_phrase))
+                    return self.handle_freq_move(int(n), " ".join(jump_phrase))
                 except ValueError:
-                    logger.info("Invalid jump phrase or n")
+                    self.logger.info("Invalid jump phrase or n")
 
 
             case ['help']:
-                print(self.parse_cmd.__doc__)
+                return self.parse_cmd.__doc__

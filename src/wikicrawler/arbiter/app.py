@@ -19,9 +19,10 @@ from ..core.utils.config import init_config
 class AsyncCLI(App):
     CSS_PATH = "utils/app.css"
 
-    def __init__(self, parent_logger=None):
+    def __init__(self, parent_logger):
         super().__init__()
-        self.logger = parent_logger.getChild(__name__) if parent_logger is not None else logging.getLogger(__name__)
+        self.logger = parent_logger.getChild(__name__)
+        self.logger.handlers.clear()
 
         self.executor = ThreadPoolExecutor()
         
@@ -58,7 +59,7 @@ class AsyncCLI(App):
         yield self.autocomplete
 
     def on_key(self, event):
-        if not self.autocomplete.has_focus:
+        if not self.input.has_focus:
             self.input.focus()
 
         if event.key == Keys.Enter:
@@ -78,8 +79,22 @@ class AsyncCLI(App):
                 for i, line in enumerate(results):
                     self.textlog.write(f"{i}: {line}")
             elif isinstance(results, dict):
-                self.dataview.add_columns(*results.keys())
-                self.dataview.add_row(results.values())
+                columns = results.keys()
+
+                for column in columns:
+                    if column not in [str(x.label) for x in self.dataview.columns.values()]:
+                        self.dataview.add_column(column)
+
+
+                for column in self.dataview.columns.values():
+                    label = str(column.label)
+
+                    if label not in results:
+                        results[label] = ""
+                
+                row = results.values()
+                self.dataview.add_row(*row)
+             
             else:
                 self.textlog.write(results) # TODO: custom page display similar to analyze_page_wrapper/print_results
 
@@ -98,7 +113,9 @@ class AsyncCLI(App):
     
 
     def exit(self) -> None:
-        self.cacher.close()
+        if self.cacher is not None:
+            self.cacher.close()
+    
         return super().exit()
 
 

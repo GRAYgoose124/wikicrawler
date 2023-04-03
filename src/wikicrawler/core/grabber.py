@@ -53,7 +53,8 @@ class WikiGrabber:
             config (dict): The configuration dictionary. 
             cacher (WikiCacher): The cacher to use. If none is provided, no caching is performed.
         """
-        self.logger = parent_logger.getChild(__name__) if parent_logger else logging.getLogger(__name__)
+        self.logger = parent_logger.getChild(__name__)
+        self.logger.handlers.clear()
 
         self.config = config
         self.cacher = cacher

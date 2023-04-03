@@ -7,15 +7,15 @@ class Seer(MarkdownBuilder):
     This class is a prompt command wrapper for the seer module, which handles the conversion of
     pages to other formats.
     """
-    def __init__(self, prompt, cacher=None):
-        super().__init__(prompt.config, cacher=cacher)
+    def __init__(self, prompt, cacher=None, parent_logger=None):
+        super().__init__(prompt.config, cacher=cacher, parent_logger=parent_logger)
         self.prompt = prompt
         self.cacher = cacher
 
     def handle_build(self):
         """ Build the current selection. 
         """
-        self.build(self.prompt.crawl_state['pages'][self.prompt.pointer['selection']])
+        return self.build(self.prompt.crawl_state['pages'][self.prompt.pointer['selection']])
 
     def handle_build_hist(self):
         """
@@ -33,6 +33,7 @@ class Seer(MarkdownBuilder):
         self.prompt.run_script(script)
 
         self.prompt.pointer = saved_pointer
+        return True
 
     def parse_cmd(self, cmd):
         """
@@ -48,11 +49,11 @@ class Seer(MarkdownBuilder):
         match cmd:
             case ['build', *hist]:
                 if len(hist) >= 1 and hist[0] == 'all':
-                    self.handle_build_hist()
+                    return self.handle_build_hist()
                 else:
-                    self.handle_build()
+                    return self.handle_build()
 
             case ['help']:
-                print(self.parse_cmd.__doc__)
+                return self.parse_cmd.__doc__
             case _:
                 pass

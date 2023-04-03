@@ -19,6 +19,7 @@ from .utils.console import console
 class WikiScriptEngine:
     def __init__(self, config, crawler, cacher=None, parent_logger=None):
         self.logger = parent_logger.getChild(__name__) if parent_logger is not None else logging.getLogger(__name__)
+        self.logger.handlers.clear()
 
         self.config = config
 

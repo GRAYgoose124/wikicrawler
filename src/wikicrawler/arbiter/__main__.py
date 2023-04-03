@@ -18,9 +18,13 @@ def main():
         nltk.download('omw-1.4')
     except KeyboardInterrupt:
         pass
-    
-    app = AsyncCLI(parent_logger=logger)
-    app.run()
+
+    try:
+        app = AsyncCLI(parent_logger=logger)
+        app.run()
+    except KeyboardInterrupt:
+        app.exit()
+
 
 if __name__ == '__main__':
     main()

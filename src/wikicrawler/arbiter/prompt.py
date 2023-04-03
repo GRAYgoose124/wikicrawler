@@ -21,8 +21,8 @@ class WikiPrompt(WikiScriptEngine):
     def __init__(self, config, crawler, cacher=None, parent_logger=None):
         super().__init__(config, crawler, cacher=cacher, parent_logger=parent_logger)
 
-        self.oracle = Oracle(self, cacher=cacher)
-        self.seer = Seer(self, cacher=cacher)
+        self.oracle = Oracle(self, cacher=cacher, parent_logger=parent_logger)
+        self.seer = Seer(self, cacher=cacher, parent_logger=parent_logger)
 
         self.commands = {}
     
