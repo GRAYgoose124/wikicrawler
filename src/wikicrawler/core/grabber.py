@@ -100,7 +100,7 @@ class WikiGrabber:
             self.fetches.append(time.perf_counter())
             return False
 
-    def fetch(self, url):
+    async def fetch(self, url):
         """
         Fetches a page from the internet.
         
@@ -115,11 +115,6 @@ class WikiGrabber:
             urllib.error.URLError: If the url is invalid.
 
         """
-
-        if self.limit():
-            self.fetch(url)
-            return
-
         parsed_url = urllib.parse.urlparse(url)
 
         page = None
@@ -154,7 +149,6 @@ class WikiGrabber:
             return page_struct
         except TypeError as e:
             self.logger.debug(f"Failed to parse {url} - likely throttled.", exc_info=e)
-            return None
 
     def retrieve(self, url, page=None):
         """

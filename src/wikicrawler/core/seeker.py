@@ -82,10 +82,10 @@ class WikiSeeker(WikiGrabber):
         search_url = f"{base_url}/wiki/Special:Search?search={urllib.parse.quote(phrase, safe='')}&"
 
         # retrieve search page results - may be disambig, wikipage, or other?
-        results = self.fetch(search_url)
-        if results is None:
-            return (None, None)
-            
+        fut = self.pool.submit(self.fetch, search_url)
+        
+    def on_search_complete(self, results, precache=False):
+        """ This function handles the results of a search."""
         # handle special search
         if results.url.startswith(f"{base_url}/wiki/Special:Search?"):
             for result in self.__speciallinks(results).values():
